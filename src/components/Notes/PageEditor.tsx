@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -177,7 +178,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
       }
       
       return (
-        <React.Fragment key={crumb.id}>
+        <div key={crumb.id} className="flex items-center gap-2">
           <button
             onClick={() => onBreadcrumbClick(crumb)}
             className="hover:text-foreground transition-colors truncate max-w-[100px]"
@@ -186,7 +187,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
             {displayName}
           </button>
           {index < breadcrumbs.length - 1 && <span>/</span>}
-        </React.Fragment>
+        </div>
       );
     });
   };
