@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,19 +136,35 @@ const PageEditor: React.FC<PageEditorProps> = ({
 
   const handleAiCompletion = (generatedContent: string, isReplacement: boolean = false) => {
     if (isReplacement && selectionRange) {
-      // Replace selected text
+      // Replace selected text with typewriter animation
       const { start, end } = selectionRange;
       const beforeText = content.substring(0, start);
       const afterText = content.substring(end);
-      setContent(beforeText + generatedContent + afterText);
+      
+      // Simulate typewriter effect
+      animateTypewriter(beforeText, generatedContent, afterText);
     } else {
-      // Insert at cursor position
+      // Insert at cursor position with typewriter animation
       const beforeText = content.substring(0, cursorPosition);
       const afterText = content.substring(cursorPosition);
-      setContent(beforeText + generatedContent + afterText);
+      
+      animateTypewriter(beforeText, generatedContent, afterText);
     }
     setShowAiCompletion(false);
     setShowToolbar(false);
+  };
+
+  const animateTypewriter = (beforeText: string, newText: string, afterText: string) => {
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      if (currentIndex <= newText.length) {
+        const currentText = beforeText + newText.substring(0, currentIndex) + afterText;
+        setContent(currentText);
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 30); // Adjust speed as needed
   };
 
   const renderBreadcrumbs = () => {
