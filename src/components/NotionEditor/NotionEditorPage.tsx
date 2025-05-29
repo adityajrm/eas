@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Home, Grid3X3, List, Search, Plus, FolderPlus, FileText, Folder, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { NotionItem, NotionViewMode, NotionBreadcrumb } from '@/types/notion';
 import { getNotionItems, createNotionItem, updateNotionItem, deleteNotionItem, getNotionItemById, searchNotionItems } from '@/services/notionService';
 import NotionEditor from './NotionEditor';
@@ -22,13 +22,22 @@ const NotionEditorPage: React.FC = () => {
   const [newItemTitle, setNewItemTitle] = useState('');
   const [selectedItem, setSelectedItem] = useState<NotionItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<(string | null)[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadItems();
   }, [currentPath]);
+
+  useEffect(() => {
+    // Initialize history with root
+    if (history.length === 0) {
+      setHistory([null]);
+      setHistoryIndex(0);
+    }
+  }, []);
 
   const loadItems = async () => {
     try {
@@ -65,7 +74,7 @@ const NotionEditorPage: React.FC = () => {
   const handleNavigation = (pathId: string | null) => {
     if (pathId !== currentPath) {
       const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(currentPath || 'root');
+      newHistory.push(pathId);
       setHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
     }
@@ -76,7 +85,7 @@ const NotionEditorPage: React.FC = () => {
     if (historyIndex > 0) {
       setHistoryIndex(historyIndex - 1);
       const prevPath = history[historyIndex - 1];
-      setCurrentPath(prevPath === 'root' ? null : prevPath);
+      setCurrentPath(prevPath);
     }
   };
 
@@ -84,7 +93,7 @@ const NotionEditorPage: React.FC = () => {
     if (historyIndex < history.length - 1) {
       setHistoryIndex(historyIndex + 1);
       const nextPath = history[historyIndex + 1];
-      setCurrentPath(nextPath === 'root' ? null : nextPath);
+      setCurrentPath(nextPath);
     }
   };
 
@@ -189,6 +198,12 @@ const NotionEditorPage: React.FC = () => {
     }
   };
 
+  const getContentPreview = (content: string | undefined): string => {
+    if (!content) return '';
+    const plainText = content.replace(/<[^>]*>/g, '').trim();
+    return plainText.length > 100 ? plainText.substring(0, 100) + '...' : plainText;
+  };
+
   const filteredItems = searchQuery 
     ? items.filter(item => 
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -210,43 +225,56 @@ const NotionEditorPage: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
+      {/* Page Title */}
+      <div className="px-4 py-2 border-b bg-card">
+        <h1 className="text-2xl font-bold text-foreground">Notes</h1>
+      </div>
+
       {/* Navigation Bar */}
-      <div className="flex items-center gap-2 p-4 border-b bg-card">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleBack}
-          disabled={historyIndex <= 0}
-        >
-          <ArrowLeft size={16} />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleForward}
-          disabled={historyIndex >= history.length - 1}
-        >
-          <ArrowRight size={16} />
-        </Button>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleHome}
-        >
-          <Home size={16} />
-        </Button>
+      <div className="flex items-center gap-2 p-4 border-b bg-card overflow-x-auto">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBack}
+            disabled={historyIndex <= 0}
+            className="flex items-center gap-1"
+          >
+            <ArrowLeft size={16} />
+            {!isMobile && <span>Back</span>}
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleForward}
+            disabled={historyIndex >= history.length - 1}
+            className="flex items-center gap-1"
+          >
+            {!isMobile && <span>Forward</span>}
+            <ArrowRight size={16} />
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleHome}
+            className="flex items-center gap-1"
+          >
+            <Home size={16} />
+            {!isMobile && <span>Home</span>}
+          </Button>
+        </div>
 
         {/* Address Bar */}
-        <div className="flex-1 flex items-center gap-1 px-3 py-1 bg-muted rounded-md text-sm">
-          <span className="text-muted-foreground">Home</span>
+        <div className="flex-1 flex items-center gap-1 px-3 py-1 bg-muted rounded-md text-sm min-w-0">
+          <span className="text-muted-foreground flex-shrink-0">Home</span>
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={crumb.id}>
-              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground flex-shrink-0">/</span>
               <button
-                className="hover:text-primary"
+                className="hover:text-primary truncate"
                 onClick={() => handleNavigation(crumb.id)}
               >
                 {crumb.title}
@@ -255,27 +283,29 @@ const NotionEditorPage: React.FC = () => {
           ))}
         </div>
 
-        {/* View Mode Toggle */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-        >
-          {viewMode === 'grid' ? <List size={16} /> : <Grid3X3 size={16} />}
-        </Button>
-
-        {/* Search */}
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            className="w-48"
-          />
-          <Button variant="outline" size="sm" onClick={handleSearch}>
-            <Search size={16} />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* View Mode Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+          >
+            {viewMode === 'grid' ? <List size={16} /> : <Grid3X3 size={16} />}
           </Button>
+
+          {/* Search */}
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className={isMobile ? "w-32" : "w-48"}
+            />
+            <Button variant="outline" size="sm" onClick={handleSearch}>
+              <Search size={16} />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -283,9 +313,9 @@ const NotionEditorPage: React.FC = () => {
       <div className="flex items-center gap-2 p-4 border-b bg-card">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button>
-              <Plus size={16} className="mr-2" />
-              New
+            <Button className="flex items-center gap-2">
+              <Plus size={16} />
+              <span>New</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -318,29 +348,39 @@ const NotionEditorPage: React.FC = () => {
             {searchQuery ? 'No items found matching your search.' : 'No items yet. Create your first folder or page!'}
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-2'}>
+          <div className={viewMode === 'grid' 
+            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' 
+            : 'space-y-2'
+          }>
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className={`group relative border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors ${
+                className={`group relative border rounded-lg p-4 hover:bg-accent cursor-pointer transition-all duration-200 hover:shadow-md ${
                   viewMode === 'list' ? 'flex items-center gap-3' : ''
                 }`}
                 onClick={() => handleItemClick(item)}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {item.type === 'folder' ? (
-                    <Folder size={20} className="text-blue-500" />
+                    <Folder size={20} className="text-blue-500 flex-shrink-0" />
                   ) : (
-                    <FileText size={20} className="text-gray-500" />
+                    <FileText size={20} className="text-gray-500 flex-shrink-0" />
                   )}
                   <span className="font-medium truncate">{item.title}</span>
                 </div>
                 
-                {viewMode === 'grid' && (
+                {/* Content Preview */}
+                {viewMode === 'grid' && item.type === 'page' && item.content && (
                   <div className="mt-2 text-sm text-muted-foreground">
-                    {item.type === 'page' && item.content && (
-                      <p className="line-clamp-2">{item.content.substring(0, 100)}...</p>
-                    )}
+                    <p className="line-clamp-2">{getContentPreview(item.content)}</p>
+                  </div>
+                )}
+
+                {viewMode === 'list' && item.type === 'page' && item.content && (
+                  <div className="flex-1 min-w-0 ml-4">
+                    <p className="text-sm text-muted-foreground truncate">
+                      {getContentPreview(item.content)}
+                    </p>
                   </div>
                 )}
 
@@ -385,6 +425,9 @@ const NotionEditorPage: React.FC = () => {
             <DialogTitle>
               Create New {createType === 'folder' ? 'Folder' : 'Page'}
             </DialogTitle>
+            <DialogDescription>
+              Enter a name for your new {createType === 'folder' ? 'folder' : 'page'}.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
