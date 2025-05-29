@@ -1,3 +1,4 @@
+
 export interface Note {
   id: string;
   title: string;
@@ -40,7 +41,7 @@ export interface CalendarEvent {
   category?: string;
 }
 
-export type AppView = 'dashboard' | 'notes' | 'tasks' | 'knowledge' | 'calendar' | 'settings';
+export type AppView = 'dashboard' | 'notes' | 'notion-editor' | 'tasks' | 'knowledge' | 'calendar' | 'settings';
 
 // Define the SpeechRecognition interfaces
 interface SpeechRecognitionEvent extends Event {
