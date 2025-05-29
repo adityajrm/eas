@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Table, Save } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Table, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { NotionItem } from '@/types/notion';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { callGeminiAPI } from '@/services/aiService';
 
 interface NotionEditorProps {
   item: NotionItem;
@@ -23,27 +24,34 @@ interface SelectionToolbarProps {
 }
 
 const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ visible, position, onFormat, onAIGenerate }) => {
+  const isMobile = useIsMobile();
+  
   if (!visible) return null;
 
   return (
     <div
       className="fixed z-50 bg-card border rounded-lg shadow-lg p-2 flex items-center gap-1 animate-fade-in"
-      style={{ top: position.top, left: position.left }}
+      style={{ 
+        top: Math.max(10, position.top), 
+        left: isMobile ? Math.max(10, Math.min(position.left, window.innerWidth - 250)) : Math.max(10, position.left)
+      }}
     >
-      <Button variant="ghost" size="sm" onClick={() => onFormat('bold')}>
-        <Bold size={14} />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onFormat('italic')}>
-        <Italic size={14} />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onFormat('underline')}>
-        <Underline size={14} />
-      </Button>
-      <Button variant="ghost" size="sm" onClick={() => onFormat('strikethrough')}>
-        <Strikethrough size={14} />
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" onClick={() => onFormat('bold')} className="h-8 w-8 p-0">
+          <Bold size={14} />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onFormat('italic')} className="h-8 w-8 p-0">
+          <Italic size={14} />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onFormat('underline')} className="h-8 w-8 p-0">
+          <Underline size={14} />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onFormat('strikethrough')} className="h-8 w-8 p-0">
+          <Strikethrough size={14} />
+        </Button>
+      </div>
       <div className="w-px h-4 bg-border mx-1" />
-      <Button variant="ghost" size="sm" onClick={onAIGenerate} className="text-blue-600">
+      <Button variant="ghost" size="sm" onClick={onAIGenerate} className="text-blue-600 text-xs px-2 h-8">
         AI Generate
       </Button>
     </div>
@@ -52,7 +60,6 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ visible, position, 
 
 const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) => {
   const [title, setTitle] = useState(item.title);
-  const [content, setContent] = useState(item.content || '');
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [showAIDialog, setShowAIDialog] = useState(false);
@@ -64,7 +71,13 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Save selection to prevent cursor jumping
+  // Initialize content only once
+  useEffect(() => {
+    if (contentRef.current && !contentRef.current.innerHTML.trim()) {
+      contentRef.current.innerHTML = item.content || '<p>Start typing...</p>';
+    }
+  }, []);
+
   const saveSelection = useCallback(() => {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
@@ -72,7 +85,6 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
     }
   }, []);
 
-  // Restore selection
   const restoreSelection = useCallback(() => {
     if (savedSelection) {
       const selection = window.getSelection();
@@ -132,21 +144,15 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
 
   const formatText = (command: string) => {
     if (savedSelection && contentRef.current) {
-      // Restore selection first
       const selection = window.getSelection();
       if (selection) {
         selection.removeAllRanges();
         selection.addRange(savedSelection);
         
-        // Apply formatting only to selected text
         document.execCommand(command, false);
         
-        // Clear selection to prevent formatting from continuing
         selection.removeAllRanges();
         setShowToolbar(false);
-        
-        // Update content state
-        setContent(contentRef.current.innerHTML);
       }
     }
   };
@@ -159,7 +165,6 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
 
     const range = selection.getRangeAt(0);
     
-    // Ensure we're inserting inside the content area
     if (!contentRef.current.contains(range.commonAncestorContainer)) {
       return;
     }
@@ -205,15 +210,22 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
         break;
       case 'table':
         element = document.createElement('table');
-        element.className = 'border-collapse border border-gray-300 my-4 w-full max-w-full';
+        element.className = 'border-collapse border border-gray-300 my-4 w-full max-w-full resize';
+        element.style.resize = 'both';
+        element.style.overflow = 'auto';
+        element.style.minWidth = '300px';
+        element.style.minHeight = '100px';
+        
         const tbody = document.createElement('tbody');
         for (let i = 0; i < 2; i++) {
           const row = document.createElement('tr');
           for (let j = 0; j < 3; j++) {
             const cell = document.createElement('td');
-            cell.className = 'border border-gray-300 p-2 min-w-[100px] outline-none';
+            cell.className = 'border border-gray-300 p-2 min-w-[100px] outline-none resize';
             cell.contentEditable = 'true';
             cell.textContent = `Cell ${i + 1}-${j + 1}`;
+            cell.style.resize = 'both';
+            cell.style.overflow = 'auto';
             row.appendChild(cell);
           }
           tbody.appendChild(row);
@@ -224,18 +236,13 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
         return;
     }
 
-    // Insert the element
     range.deleteContents();
     range.insertNode(element);
     
-    // Move cursor after the inserted element
     range.setStartAfter(element);
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
-    
-    // Update content
-    setContent(contentRef.current.innerHTML);
   };
 
   const typewriterEffect = async (text: string) => {
@@ -244,7 +251,6 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
     setIsTyping(true);
     
     try {
-      // Restore the saved selection
       const selection = window.getSelection();
       if (selection) {
         selection.removeAllRanges();
@@ -252,29 +258,22 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
         
         const range = savedSelection;
         
-        // If there's selected text, delete it first
         if (selectedText) {
           range.deleteContents();
         }
         
-        // Create a text node for the new content
         const textNode = document.createTextNode('');
         range.insertNode(textNode);
         
-        // Animate typing effect
         for (let i = 0; i < text.length; i++) {
           await new Promise(resolve => setTimeout(resolve, 30));
           textNode.textContent += text[i];
         }
         
-        // Position cursor at the end
         range.setStartAfter(textNode);
         range.collapse(true);
         selection.removeAllRanges();
         selection.addRange(range);
-        
-        // Update content state
-        setContent(contentRef.current.innerHTML);
       }
     } catch (error) {
       console.error('Error in typewriter effect:', error);
@@ -292,36 +291,31 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
     if (!aiPrompt.trim()) return;
 
     try {
-      // Simulate AI response - replace with actual AI service call
-      const response = await new Promise<string>((resolve) => {
-        setTimeout(() => {
-          const prompts = {
-            "shorten": "Shortened version of the content.",
-            "expand": "This is an expanded version with more details and context.",
-            "professional": "This content has been rewritten in a professional tone.",
-            "summary": "Key points: Professional summary of the main ideas."
-          };
-          
-          const key = Object.keys(prompts).find(k => aiPrompt.toLowerCase().includes(k)) || "expand";
-          resolve(prompts[key as keyof typeof prompts]);
-        }, 1000);
-      });
+      const contextMessage = selectedText 
+        ? `Please process this text according to the request: "${selectedText}"\n\nRequest: ${aiPrompt}`
+        : `Please generate content based on this request: ${aiPrompt}`;
 
-      await typewriterEffect(response);
-
-      setShowAIDialog(false);
-      setAiPrompt('');
-      setSelectedText('');
+      const response = await callGeminiAPI(contextMessage, []);
       
-      toast({
-        title: "AI Content Generated",
-        description: "Content has been generated and inserted",
-      });
+      if (response.text) {
+        await typewriterEffect(response.text);
+        
+        setShowAIDialog(false);
+        setAiPrompt('');
+        setSelectedText('');
+        
+        toast({
+          title: "AI Content Generated",
+          description: "Content has been generated and inserted",
+        });
+      } else {
+        throw new Error('No response from AI service');
+      }
     } catch (error) {
       console.error('Error generating AI content:', error);
       toast({
         title: "Error",
-        description: "Failed to generate AI content",
+        description: "Failed to generate AI content. Please check your AI configuration in Settings.",
         variant: "destructive",
       });
     }
@@ -331,25 +325,22 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
     const updatedItem: NotionItem = {
       ...item,
       title,
-      content: contentRef.current?.innerHTML || content,
+      content: contentRef.current?.innerHTML || '',
       updated_at: new Date(),
     };
     onSave(updatedItem);
   };
 
   const handleContentChange = () => {
-    if (contentRef.current) {
-      setContent(contentRef.current.innerHTML);
-    }
+    // Intentionally minimal to prevent cursor issues
   };
 
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-4 p-4 border-b bg-card">
+      <div className="flex items-center gap-4 p-6 border-b bg-card">
         <Button variant="outline" onClick={onCancel} size={isMobile ? "sm" : "default"}>
-          <ArrowLeft size={16} className="mr-2" />
-          Back
+          ← Back
         </Button>
         
         <Input
@@ -366,7 +357,7 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
       </div>
 
       {/* Formatting Toolbar */}
-      <div className="flex items-center gap-2 p-4 border-b bg-card overflow-x-auto">
+      <div className="flex items-center gap-2 p-6 border-b bg-card overflow-x-auto">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => insertElement('h1')}>
             <Type size={16} className="mr-1" />
@@ -397,17 +388,17 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
       </div>
 
       {/* Content Editor */}
-      <div className="flex-1 overflow-auto bg-background">
-        <div className="max-w-4xl mx-auto p-6">
+      <div className="flex-1 overflow-auto bg-muted/30 p-6">
+        <div className="max-w-4xl mx-auto">
           <div
             ref={contentRef}
             contentEditable
-            className="min-h-full p-6 focus:outline-none prose prose-lg max-w-none bg-card rounded-lg border shadow-sm"
-            dangerouslySetInnerHTML={{ __html: content }}
+            className="min-h-full p-8 focus:outline-none prose prose-lg max-w-none bg-card rounded-lg border shadow-sm"
             onInput={handleContentChange}
             onFocus={saveSelection}
             onBlur={saveSelection}
             style={{ minHeight: 'calc(100vh - 300px)' }}
+            suppressContentEditableWarning={true}
           />
         </div>
       </div>
@@ -422,7 +413,7 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
 
       {/* AI Generate Dialog */}
       <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>AI Generate Content</DialogTitle>
             <DialogDescription>

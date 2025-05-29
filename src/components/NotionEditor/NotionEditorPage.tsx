@@ -32,7 +32,6 @@ const NotionEditorPage: React.FC = () => {
   }, [currentPath]);
 
   useEffect(() => {
-    // Initialize history with root
     if (history.length === 0) {
       setHistory([null]);
       setHistoryIndex(0);
@@ -226,13 +225,13 @@ const NotionEditorPage: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-background">
-      {/* Page Title */}
-      <div className="px-4 py-2 border-b bg-card">
+      {/* Page Header - Match Tasks page style */}
+      <div className="px-6 py-4 border-b bg-card">
         <h1 className="text-2xl font-bold text-foreground">Notes</h1>
       </div>
 
       {/* Navigation Bar */}
-      <div className="flex items-center gap-2 p-4 border-b bg-card overflow-x-auto">
+      <div className="flex items-center gap-2 p-6 border-b bg-card overflow-x-auto">
         <div className="flex items-center gap-2 flex-shrink-0">
           <Button
             variant="outline"
@@ -268,7 +267,7 @@ const NotionEditorPage: React.FC = () => {
         </div>
 
         {/* Address Bar */}
-        <div className="flex-1 flex items-center gap-1 px-3 py-1 bg-muted rounded-md text-sm min-w-0">
+        <div className="flex-1 flex items-center gap-1 px-3 py-2 bg-muted rounded-md text-sm min-w-0 mx-4">
           <span className="text-muted-foreground flex-shrink-0">Home</span>
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={crumb.id}>
@@ -310,7 +309,7 @@ const NotionEditorPage: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-4 border-b bg-card">
+      <div className="flex items-center gap-2 p-6 border-b bg-card">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="flex items-center gap-2">
@@ -341,55 +340,50 @@ const NotionEditorPage: React.FC = () => {
         </DropdownMenu>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 p-4 overflow-auto">
+      {/* Content Area - Match Tasks page spacing */}
+      <div className="flex-1 p-6 overflow-auto bg-muted/30">
         {filteredItems.length === 0 ? (
           <div className="text-center text-muted-foreground py-12">
             {searchQuery ? 'No items found matching your search.' : 'No items yet. Create your first folder or page!'}
           </div>
         ) : (
           <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' 
-            : 'space-y-2'
+            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' 
+            : 'space-y-3'
           }>
             {filteredItems.map((item) => (
               <div
                 key={item.id}
-                className={`group relative border rounded-lg p-4 hover:bg-accent cursor-pointer transition-all duration-200 hover:shadow-md ${
+                className={`group relative border rounded-lg p-4 hover:bg-accent cursor-pointer transition-all duration-200 hover:shadow-md bg-card ${
                   viewMode === 'list' ? 'flex items-center gap-3' : ''
                 }`}
                 onClick={() => handleItemClick(item)}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
                   {item.type === 'folder' ? (
                     <Folder size={20} className="text-blue-500 flex-shrink-0" />
                   ) : (
                     <FileText size={20} className="text-gray-500 flex-shrink-0" />
                   )}
-                  <span className="font-medium truncate">{item.title}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium truncate block">{item.title}</span>
+                    {/* Content Preview */}
+                    {item.type === 'page' && item.content && (
+                      <div className="mt-1">
+                        <p className={`text-sm text-muted-foreground ${viewMode === 'grid' ? 'line-clamp-2' : 'truncate'}`}>
+                          {getContentPreview(item.content)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                {/* Content Preview */}
-                {viewMode === 'grid' && item.type === 'page' && item.content && (
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    <p className="line-clamp-2">{getContentPreview(item.content)}</p>
-                  </div>
-                )}
-
-                {viewMode === 'list' && item.type === 'page' && item.content && (
-                  <div className="flex-1 min-w-0 ml-4">
-                    <p className="text-sm text-muted-foreground truncate">
-                      {getContentPreview(item.content)}
-                    </p>
-                  </div>
-                )}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <MoreVertical size={16} />

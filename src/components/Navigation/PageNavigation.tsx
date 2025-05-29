@@ -13,7 +13,7 @@ interface PageNavigationProps {
 }
 
 const PageNavigation: React.FC<PageNavigationProps> = ({
-  showBackButton = true,
+  showBackButton = false, // Changed default to false since we're removing redundant back buttons
   onBack,
   onForward,
   title
@@ -35,7 +35,8 @@ const PageNavigation: React.FC<PageNavigationProps> = ({
     }
   };
 
-  if (currentView === 'dashboard') {
+  // Don't show navigation for dashboard or notion-editor since they have their own navigation
+  if (currentView === 'dashboard' || currentView === 'notion-editor') {
     return null;
   }
 
