@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Book, Calendar, FileText, Home, ListTodo, Moon, Settings, Sun, X, Edit3 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
@@ -32,10 +31,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
     id: 'notes',
     icon: FileText,
     label: 'Notes'
-  }, {
-    id: 'notion-editor',
-    icon: Edit3,
-    label: 'Notion Editor'
   }, {
     id: 'tasks',
     icon: ListTodo,

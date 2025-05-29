@@ -1,9 +1,7 @@
-
 import React from 'react';
 import Sidebar from './Sidebar';
 import { useAppContext } from '../context/AppContext';
 import Dashboard from './Dashboard';
-import NotesPage from './Notes/NotesPage';
 import NotionEditorPage from './NotionEditor/NotionEditorPage';
 import TasksPage from './Tasks/TasksPage';
 import KnowledgeBasePage from './KnowledgeBase/KnowledgeBasePage';
@@ -40,7 +38,6 @@ const Layout = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'notes':
-        return <NotesPage />;
       case 'notion-editor':
         return <NotionEditorPage />;
       case 'tasks':
