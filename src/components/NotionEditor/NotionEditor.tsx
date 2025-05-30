@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Table, Save } from 'lucide-react';
+import { Bold, Italic, Underline, Strikethrough, Type, List, ListOrdered, Table, Save, ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -8,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { NotionItem } from '@/types/notion';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { callGeminiAPI } from '@/services/aiService';
+import { callAINoteAPI } from '@/services/aiNoteService';
 
 interface NotionEditorProps {
   item: NotionItem;
@@ -71,10 +70,25 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
+  const undoStack: string[] = [];
+  const redoStack: string[] = [];
+
+  // Function to convert markdown headings and lists to basic HTML
+  const formatContent = (text: string): string => {
+    return text
+      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold my-4">$1</h1>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-semibold my-3">$1</h2>')
+      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-medium my-2">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/^\* (.*$)/gim, '<ul><li class="ml-4 list-disc">$1</li></ul>')
+      .replace(/\n\n/g, '<br /><br />');
+  };
+
   // Initialize content only once
   useEffect(() => {
     if (contentRef.current && !contentRef.current.innerHTML.trim()) {
-      contentRef.current.innerHTML = item.content || '<p>Start typing...</p>';
+      contentRef.current.innerHTML = formatContent(item.content || '<p>Start typing...</p>');
     }
   }, []);
 
@@ -94,6 +108,33 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
       }
     }
   }, [savedSelection]);
+
+  const saveToUndoStack = () => {
+    if (contentRef.current) {
+      undoStack.push(contentRef.current.innerHTML);
+      if (undoStack.length > 50) undoStack.shift(); // Limit stack size
+    }
+  };
+
+  const undoChange = () => {
+    if (undoStack.length > 0) {
+      const lastState = undoStack.pop();
+      if (lastState && contentRef.current) {
+        redoStack.push(contentRef.current.innerHTML);
+        contentRef.current.innerHTML = lastState;
+      }
+    }
+  };
+
+  const redoChange = () => {
+    if (redoStack.length > 0) {
+      const nextState = redoStack.pop();
+      if (nextState && contentRef.current) {
+        undoStack.push(contentRef.current.innerHTML);
+        contentRef.current.innerHTML = nextState;
+      }
+    }
+  };
 
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -115,7 +156,28 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '\\' && contentRef.current?.contains(e.target as Node)) {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redoChange();
+          } else {
+            undoChange();
+          }
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const tabNode = document.createTextNode('\t');
+          range.insertNode(tabNode);
+          range.setStartAfter(tabNode);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else if (e.key === '\\' && contentRef.current?.contains(e.target as Node)) {
         e.preventDefault();
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
@@ -295,8 +357,8 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
         ? `Please process this text according to the request: "${selectedText}"\n\nRequest: ${aiPrompt}`
         : `Please generate content based on this request: ${aiPrompt}`;
 
-      const response = await callGeminiAPI(contextMessage, []);
-      
+      const response = await callAINoteAPI(aiPrompt, selectedText);
+
       if (response.text) {
         await typewriterEffect(response.text);
         
@@ -309,7 +371,7 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
           description: "Content has been generated and inserted",
         });
       } else {
-        throw new Error('No response from AI service');
+        throw new Error('No response from AI Note service');
       }
     } catch (error) {
       console.error('Error generating AI content:', error);
@@ -332,28 +394,91 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
   };
 
   const handleContentChange = () => {
-    // Intentionally minimal to prevent cursor issues
+    saveToUndoStack();
+    if (contentRef.current) {
+      const selection = window.getSelection();
+      const range = selection?.getRangeAt(0).cloneRange(); // Save current selection
+
+      contentRef.current.innerHTML = formatContent(contentRef.current.innerText);
+
+      if (range) {
+        selection?.removeAllRanges();
+        selection?.addRange(range); // Restore selection
+      }
+    }
   };
 
+  useEffect(() => {
+    const handleFormattingShortcut = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'b':
+            e.preventDefault();
+            formatText('bold');
+            break;
+          case 'i':
+            e.preventDefault();
+            formatText('italic');
+            break;
+          case 'u':
+            e.preventDefault();
+            formatText('underline');
+            break;
+          case 's':
+            e.preventDefault();
+            formatText('strikethrough');
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleFormattingShortcut);
+
+    return () => {
+      document.removeEventListener('keydown', handleFormattingShortcut);
+    };
+  }, [formatText]);
+
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4 p-6 border-b bg-card">
-        <Button variant="outline" onClick={onCancel} size={isMobile ? "sm" : "default"}>
-          ← Back
-        </Button>
-        
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="flex-1 text-lg font-semibold border-none shadow-none focus-visible:ring-0"
+          className="text-3xl font-bold border border-muted rounded-md px-2 py-1 w-full md:w-auto"
           placeholder="Untitled"
         />
-        
-        <Button onClick={handleSave} disabled={isTyping} size={isMobile ? "sm" : "default"}>
-          <Save size={16} className="mr-2" />
-          Save
+        <Button onClick={handleSave} disabled={isTyping} className="flex items-center gap-2">
+          <Save size={16} />
+          <span>Save</span>
         </Button>
+      </div>
+
+      {/* Navigation Bar */}
+      <div className="flex flex-wrap items-center gap-4 p-0">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            className="flex items-center"
+          >
+            <ArrowLeft size={16} />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center"
+          >
+            <Home size={16} />
+          </Button>
+        </div>
+        <div className="flex-1 flex items-center gap-1 px-3 py-2 bg-muted rounded-md text-sm min-w-0">
+          <span className="text-muted-foreground flex-shrink-0">Editing</span>
+          <span className="text-muted-foreground flex-shrink-0">/</span>
+          <span className="truncate">{title}</span>
+        </div>
       </div>
 
       {/* Formatting Toolbar */}
@@ -388,7 +513,6 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
       </div>
 
       {/* Content Editor */}
-      <div className="flex-1 overflow-auto bg-muted/30 p-6">
         <div className="max-w-4xl mx-auto">
           <div
             ref={contentRef}
@@ -401,7 +525,6 @@ const NotionEditor: React.FC<NotionEditorProps> = ({ item, onSave, onCancel }) =
             suppressContentEditableWarning={true}
           />
         </div>
-      </div>
 
       {/* Selection Toolbar */}
       <SelectionToolbar
