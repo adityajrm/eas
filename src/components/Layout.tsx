@@ -2,7 +2,7 @@ import React from 'react';
 import Sidebar from './Sidebar';
 import { useAppContext } from '../context/AppContext';
 import Dashboard from './Dashboard';
-import NotionEditorPage from './NotionEditor/NotionEditorPage';
+import BlockEditorPage from './NotionEditor/BlockEditorPage';
 import TasksPage from './Tasks/TasksPage';
 import KnowledgeBasePage from './KnowledgeBase/KnowledgeBasePage';
 import CalendarPage from './Calendar/CalendarPage';
@@ -13,7 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
 
-const Layout = () => {
+const Layout: React.FC = () => {
   const { currentView } = useAppContext();
   const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = React.useState(!isMobile);
@@ -39,7 +39,7 @@ const Layout = () => {
         return <Dashboard />;
       case 'notes':
       case 'notion-editor':
-        return <NotionEditorPage />;
+        return <BlockEditorPage />;
       case 'tasks':
         return <TasksPage />;
       case 'knowledge':
