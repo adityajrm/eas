@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronRight, ChevronDown, CheckSquare, Square, Lightbulb, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
+import { GripVertical, ChevronRight, ChevronDown, CheckSquare, Square, Lightbulb, AlertTriangle, AlertCircle, CheckCircle, Wand2 } from 'lucide-react';
 import { Block, BlockType } from '@/types/blocks';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,8 +15,10 @@ interface BlockComponentProps {
   onAddBlock: (index: number, type?: BlockType) => void;
   onDeleteBlock: (blockId: string) => void;
   onKeyDown: (e: KeyboardEvent, blockId: string, index: number) => void;
+  onAIGenerate: (blockId: string, context?: string) => void;
   focused: boolean;
   onFocus: () => void;
+  selectedText: string;
 }
 
 export const BlockComponent: React.FC<BlockComponentProps> = ({
@@ -27,8 +29,10 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
   onAddBlock,
   onDeleteBlock,
   onKeyDown,
+  onAIGenerate,
   focused,
-  onFocus
+  onFocus,
+  selectedText
 }) => {
   const {
     attributes,
@@ -41,6 +45,7 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [showAIButton, setShowAIButton] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -51,19 +56,13 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
   useEffect(() => {
     if (focused && contentRef.current) {
       contentRef.current.focus();
-      // Place cursor at end
-      const range = document.createRange();
-      const sel = window.getSelection();
-      if (contentRef.current.childNodes.length > 0) {
-        range.setStartAfter(contentRef.current.lastChild!);
-      } else {
-        range.setStart(contentRef.current, 0);
-      }
-      range.collapse(true);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
     }
   }, [focused]);
+
+  // Show AI button when there's selected text
+  useEffect(() => {
+    setShowAIButton(!!selectedText);
+  }, [selectedText]);
 
   const handleContentChange = () => {
     if (contentRef.current) {
@@ -81,11 +80,14 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
 
   const handleToggleCollapse = () => {
     onContentChange(block.id, block.content);
-    // Handle collapse state - would need to be added to block state
+  };
+
+  const handleAIClick = () => {
+    onAIGenerate(block.id, selectedText);
   };
 
   const renderBlockContent = () => {
-    const baseClasses = "w-full min-h-[1.5rem] outline-none resize-none border-none bg-transparent";
+    const baseClasses = "w-full min-h-[1.5rem] outline-none resize-none border-none bg-transparent focus:ring-0 focus:outline-none";
     
     switch (block.type) {
       case 'heading1':
@@ -98,9 +100,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-          >
-            {block.content}
-          </div>
+            dangerouslySetInnerHTML={{ __html: block.content }}
+          />
         );
       
       case 'heading2':
@@ -113,9 +114,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-          >
-            {block.content}
-          </div>
+            dangerouslySetInnerHTML={{ __html: block.content }}
+          />
         );
       
       case 'heading3':
@@ -128,9 +128,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-          >
-            {block.content}
-          </div>
+            dangerouslySetInnerHTML={{ __html: block.content }}
+          />
         );
       
       case 'bulletList':
@@ -145,9 +144,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
           </div>
         );
       
@@ -163,9 +161,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
           </div>
         );
       
@@ -192,9 +189,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
           </div>
         );
       
@@ -222,9 +218,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
                 onKeyDown={handleKeyDown}
                 onFocus={onFocus}
                 suppressContentEditableWarning={true}
-              >
-                {block.content}
-              </div>
+                dangerouslySetInnerHTML={{ __html: block.content }}
+              />
             </div>
             {!block.collapsed && block.children && (
               <div className="ml-8 space-y-2">
@@ -245,9 +240,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
           </div>
         );
       
@@ -262,9 +256,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
           </div>
         );
       
@@ -295,9 +288,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
                 onKeyDown={handleKeyDown}
                 onFocus={onFocus}
                 suppressContentEditableWarning={true}
-              >
-                {block.content}
-              </div>
+                dangerouslySetInnerHTML={{ __html: block.content }}
+              />
             </div>
           </div>
         );
@@ -316,9 +308,8 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-            >
-              {block.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: block.content }}
+            />
             {!block.content && (
               <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground">
                 Type '/' for commands
@@ -334,20 +325,19 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-md transition-all duration-200",
-        focused && "ring-2 ring-primary ring-opacity-20",
-        isHovered && "bg-accent/50"
+        "group relative rounded-md transition-all duration-200 p-2",
+        isHovered && "bg-accent/30"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-start gap-2 p-2">
+      <div className="flex items-start gap-2">
         {/* Drag Handle */}
         <div
           {...attributes}
           {...listeners}
           className={cn(
-            "opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing mt-1",
+            "opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing mt-1 flex-shrink-0",
             isDragging && "opacity-100"
           )}
         >
@@ -358,6 +348,19 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
         <div className="flex-1 min-w-0">
           {renderBlockContent()}
         </div>
+
+        {/* AI Generate Button */}
+        {(isHovered || showAIButton) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleAIClick}
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2 text-xs flex items-center gap-1"
+          >
+            <Wand2 size={12} />
+            AI
+          </Button>
+        )}
       </div>
     </div>
   );

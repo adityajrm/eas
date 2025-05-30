@@ -1,15 +1,32 @@
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { Search, Plus, Download, Upload } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { Plus, Save, FileDown, FileUp, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Block, BlockType, SlashCommand } from '@/types/blocks';
+import { Block, BlockType } from '@/types/blocks';
 import { BlockComponent } from './BlockComponent';
 import { SlashCommandMenu } from './SlashCommandMenu';
-import { createBlock, exportToMarkdown, importFromMarkdown } from '@/utils/blockUtils';
+import { exportToMarkdown, importFromMarkdown } from '@/utils/blockUtils';
+import { callAINoteAPI } from '@/services/aiNoteService';
 
 interface BlockEditorProps {
   initialBlocks?: Block[];
@@ -21,30 +38,78 @@ interface BlockEditorProps {
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   initialBlocks = [],
   onSave,
-  title = '',
+  title = 'Untitled',
   onTitleChange
 }) => {
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks.length > 0 ? initialBlocks : [createBlock('text')]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashMenuPosition, setSlashMenuPosition] = useState({ x: 0, y: 0 });
-  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
-  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [slashMenuBlockId, setSlashMenuBlockId] = useState<string | null>(null);
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiContext, setAiContext] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [targetBlockId, setTargetBlockId] = useState<string | null>(null);
+  const [selectedText, setSelectedText] = useState('');
+  const lastSaveRef = useRef<string>('');
   const { toast } = useToast();
-  const editorRef = useRef<HTMLDivElement>(null);
 
-  const handleBlockChange = useCallback((blockId: string, newContent: string, newChecked?: boolean) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Initialize with a default block if empty
+  useEffect(() => {
+    if (blocks.length === 0) {
+      const defaultBlock: Block = {
+        id: `block-${Date.now()}`,
+        type: 'text',
+        content: '',
+      };
+      setBlocks([defaultBlock]);
+      setFocusedBlockId(defaultBlock.id);
+    }
+  }, []);
+
+  // Auto-save with debouncing and duplicate prevention
+  useEffect(() => {
+    const currentState = JSON.stringify(blocks);
+    if (currentState !== lastSaveRef.current && blocks.length > 0) {
+      const timeoutId = setTimeout(() => {
+        if (onSave) {
+          onSave(blocks);
+          lastSaveRef.current = currentState;
+        }
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [blocks, onSave]);
+
+  const createBlock = (type: BlockType = 'text', content: string = ''): Block => ({
+    id: `block-${Date.now()}-${Math.random()}`,
+    type,
+    content,
+    checked: type === 'todo' ? false : undefined,
+    collapsed: type === 'toggle' ? false : undefined,
+    calloutType: type === 'callout' ? 'info' : undefined,
+  });
+
+  const handleBlockContentChange = useCallback((blockId: string, content: string, checked?: boolean) => {
     setBlocks(prev => prev.map(block => 
       block.id === blockId 
-        ? { ...block, content: newContent, ...(newChecked !== undefined && { checked: newChecked }) }
+        ? { ...block, content, ...(checked !== undefined && { checked }) }
         : block
     ));
   }, []);
 
-  const handleBlockTypeChange = useCallback((blockId: string, newType: BlockType) => {
+  const handleBlockTypeChange = useCallback((blockId: string, type: BlockType) => {
     setBlocks(prev => prev.map(block => 
       block.id === blockId 
-        ? { ...block, type: newType }
+        ? { ...block, type, ...(type === 'todo' && { checked: false }) }
         : block
     ));
   }, []);
@@ -61,65 +126,121 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
   const handleDeleteBlock = useCallback((blockId: string) => {
     setBlocks(prev => {
-      const filtered = prev.filter(block => block.id !== blockId);
-      return filtered.length === 0 ? [createBlock('text')] : filtered;
+      const newBlocks = prev.filter(block => block.id !== blockId);
+      if (newBlocks.length === 0) {
+        const defaultBlock = createBlock();
+        setFocusedBlockId(defaultBlock.id);
+        return [defaultBlock];
+      }
+      return newBlocks;
     });
   }, []);
 
-  const handleSlashCommand = useCallback((command: SlashCommand) => {
-    if (activeBlockId) {
-      handleBlockTypeChange(activeBlockId, command.type);
-      setShowSlashMenu(false);
-      setActiveBlockId(null);
-    }
-  }, [activeBlockId, handleBlockTypeChange]);
-
-  const handleKeyDown = useCallback((e: KeyboardEvent, blockId: string, blockIndex: number) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent, blockId: string, index: number) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleAddBlock(blockIndex);
+      handleAddBlock(index);
     } else if (e.key === 'Backspace') {
       const block = blocks.find(b => b.id === blockId);
       if (block && block.content === '' && blocks.length > 1) {
         e.preventDefault();
         handleDeleteBlock(blockId);
-        // Focus previous block
-        if (blockIndex > 0) {
-          const prevBlock = blocks[blockIndex - 1];
-          setFocusedBlockId(prevBlock.id);
+        if (index > 0) {
+          setFocusedBlockId(blocks[index - 1].id);
         }
       }
-    } else if (e.key === '/' && e.target instanceof HTMLElement) {
-      const block = blocks.find(b => b.id === blockId);
-      if (block && block.content === '') {
-        e.preventDefault();
-        const rect = e.target.getBoundingClientRect();
-        setSlashMenuPosition({ x: rect.left, y: rect.bottom });
-        setShowSlashMenu(true);
-        setActiveBlockId(blockId);
-      }
+    } else if (e.key === '/' && blocks.find(b => b.id === blockId)?.content === '') {
+      e.preventDefault();
+      setShowSlashMenu(true);
+      setSlashMenuBlockId(blockId);
+      const rect = (e.target as HTMLElement).getBoundingClientRect();
+      setSlashMenuPosition({ x: rect.left, y: rect.bottom });
     }
   }, [blocks, handleAddBlock, handleDeleteBlock]);
 
+  const handleSlashCommand = useCallback((type: BlockType) => {
+    if (slashMenuBlockId) {
+      handleBlockTypeChange(slashMenuBlockId, type);
+      setFocusedBlockId(slashMenuBlockId);
+    }
+    setShowSlashMenu(false);
+    setSlashMenuBlockId(null);
+  }, [slashMenuBlockId, handleBlockTypeChange]);
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
     if (over && active.id !== over.id) {
-      setBlocks(blocks => {
-        const oldIndex = blocks.findIndex(block => block.id === active.id);
-        const newIndex = blocks.findIndex(block => block.id === over.id);
-        
-        return arrayMove(blocks, oldIndex, newIndex);
+      setBlocks(prev => {
+        const oldIndex = prev.findIndex(block => block.id === active.id);
+        const newIndex = prev.findIndex(block => block.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
       });
     }
   };
 
-  const handleSave = () => {
-    onSave?.(blocks);
-    toast({
-      title: "Saved",
-      description: "Your notes have been saved successfully",
-    });
+  const handleAIGenerate = async (blockId?: string, context?: string) => {
+    setTargetBlockId(blockId || null);
+    setAiContext(context || selectedText || '');
+    setShowAIDialog(true);
+  };
+
+  const generateAIContent = async () => {
+    if (!aiPrompt.trim()) return;
+
+    setIsGenerating(true);
+    try {
+      const contextMessage = aiContext 
+        ? `Context: "${aiContext}"\n\nPrompt: ${aiPrompt}`
+        : aiPrompt;
+
+      const response = await callAINoteAPI(aiPrompt, aiContext);
+      
+      if (response.text) {
+        if (targetBlockId) {
+          // Replace content in existing block with typewriter effect
+          await typewriterEffect(targetBlockId, response.text);
+        } else {
+          // Create new block with generated content
+          const newBlock = createBlock('text', '');
+          setBlocks(prev => [...prev, newBlock]);
+          await typewriterEffect(newBlock.id, response.text);
+        }
+        
+        toast({
+          title: "AI Content Generated",
+          description: "Content has been generated successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating AI content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate AI content. Please check your AI configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+      setShowAIDialog(false);
+      setAiPrompt('');
+      setAiContext('');
+      setSelectedText('');
+      setTargetBlockId(null);
+    }
+  };
+
+  const typewriterEffect = async (blockId: string, text: string) => {
+    const words = text.split(' ');
+    let currentText = '';
+    
+    for (let i = 0; i < words.length; i++) {
+      currentText += (i > 0 ? ' ' : '') + words[i];
+      setBlocks(prev => prev.map(block => 
+        block.id === blockId 
+          ? { ...block, content: currentText }
+          : block
+      ));
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   };
 
   const handleExport = () => {
@@ -128,7 +249,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${title || 'notes'}.md`;
+    a.download = `${title}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -141,104 +262,108 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         const content = e.target?.result as string;
         const importedBlocks = importFromMarkdown(content);
         setBlocks(importedBlocks);
-        toast({
-          title: "Imported",
-          description: "Notes imported successfully",
-        });
       };
       reader.readAsText(file);
     }
   };
 
-  const filteredBlocks = searchQuery 
-    ? blocks.filter(block => 
-        block.content.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : blocks;
-
-  // Auto-save every 2 seconds
+  // Handle text selection for AI generation
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onSave?.(blocks);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [blocks, onSave]);
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        setSelectedText(selection.toString());
+      } else {
+        setSelectedText('');
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelection);
+    return () => document.removeEventListener('selectionchange', handleSelection);
+  }, []);
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <Input
-          value={title}
-          onChange={(e) => onTitleChange?.(e.target.value)}
-          className="text-3xl font-bold border-none shadow-none px-0 py-2 bg-transparent focus-visible:ring-0"
-          placeholder="Untitled"
-        />
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex-1">
+          <Input
+            value={title}
+            onChange={(e) => onTitleChange?.(e.target.value)}
+            className="text-3xl font-bold border-none bg-transparent p-0 focus-visible:ring-0"
+            placeholder="Untitled"
+          />
+        </div>
         <div className="flex items-center gap-2">
-          <Button onClick={handleSave} size="sm" variant="outline">
-            Save
+          {isGenerating && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+              Generating...
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleAIGenerate()}
+            className="flex items-center gap-2"
+          >
+            <Wand2 size={16} />
+            AI Generate
           </Button>
-          <Button onClick={handleExport} size="sm" variant="outline">
-            <Download size={16} className="mr-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="flex items-center gap-2"
+          >
+            <FileDown size={16} />
             Export
           </Button>
-          <Button size="sm" variant="outline" asChild>
-            <label htmlFor="import-file" className="cursor-pointer flex items-center">
-              <Upload size={16} className="mr-2" />
-              Import
-            </label>
-          </Button>
-          <input
-            id="import-file"
-            type="file"
-            accept=".md,.txt"
-            onChange={handleImport}
-            className="hidden"
-          />
+          <label>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="flex items-center gap-2"
+            >
+              <span>
+                <FileUp size={16} />
+                Import
+              </span>
+            </Button>
+            <input
+              type="file"
+              accept=".md,.txt"
+              onChange={handleImport}
+              className="hidden"
+            />
+          </label>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-        <Input
-          className="pl-10"
-          placeholder="Search blocks..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
       {/* Editor */}
-      <div 
-        ref={editorRef}
-        className="min-h-[600px] space-y-2 relative"
-        onClick={(e) => {
-          if (e.target === editorRef.current) {
-            handleAddBlock(blocks.length - 1);
-          }
-        }}
-      >
+      <div className="space-y-2">
         <DndContext
+          sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
         >
-          <SortableContext
-            items={filteredBlocks.map(block => block.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {filteredBlocks.map((block, index) => (
+          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+            {blocks.map((block, index) => (
               <BlockComponent
                 key={block.id}
                 block={block}
                 index={index}
-                onContentChange={handleBlockChange}
+                onContentChange={handleBlockContentChange}
                 onTypeChange={handleBlockTypeChange}
                 onAddBlock={handleAddBlock}
                 onDeleteBlock={handleDeleteBlock}
                 onKeyDown={handleKeyDown}
+                onAIGenerate={handleAIGenerate}
                 focused={focusedBlockId === block.id}
                 onFocus={() => setFocusedBlockId(block.id)}
+                selectedText={selectedText}
               />
             ))}
           </SortableContext>
@@ -248,8 +373,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="w-full mt-4 text-muted-foreground hover:text-foreground"
           onClick={() => handleAddBlock(blocks.length - 1)}
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
         >
           <Plus size={16} className="mr-2" />
           Add a block
@@ -257,16 +382,49 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       </div>
 
       {/* Slash Command Menu */}
-      {showSlashMenu && (
-        <SlashCommandMenu
-          position={slashMenuPosition}
-          onSelect={handleSlashCommand}
-          onClose={() => {
-            setShowSlashMenu(false);
-            setActiveBlockId(null);
-          }}
-        />
-      )}
+      <SlashCommandMenu
+        isOpen={showSlashMenu}
+        position={slashMenuPosition}
+        onSelect={handleSlashCommand}
+        onClose={() => {
+          setShowSlashMenu(false);
+          setSlashMenuBlockId(null);
+        }}
+      />
+
+      {/* AI Generate Dialog */}
+      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>AI Generate Content</DialogTitle>
+            <DialogDescription>
+              Describe what you want to generate and AI will create content for you.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {aiContext && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Context:</p>
+                <p className="text-sm">{aiContext}</p>
+              </div>
+            )}
+            <Textarea
+              placeholder="Describe what you want to generate... (e.g., 'Write a summary about renewable energy', 'Create a to-do list for project planning')"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowAIDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={generateAIContent} disabled={!aiPrompt.trim() || isGenerating}>
+                {isGenerating ? 'Generating...' : 'Generate'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
