@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Home, Grid3X3, List, Search, Plus, FolderPlus, FileText, Folder, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -239,7 +238,7 @@ const BlockEditorPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-background">
         <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div>
             <div className="flex items-center justify-between h-16">
               <Button
                 variant="ghost"
@@ -257,7 +256,7 @@ const BlockEditorPage: React.FC = () => {
           </div>
         </div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto py-8">
           <BlockEditor
             initialBlocks={initialBlocks}
             onSave={handleSaveItem}
@@ -276,48 +275,31 @@ const BlockEditorPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Notes</h1>
-              <p className="text-muted-foreground mt-1">Organize your thoughts with block-based editing</p>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="flex items-center gap-2">
+      <div className="bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div>
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">Notes</h1>
+                <p className="text-muted-foreground">Organize your thoughts with block-based editing</p>
+              </div>
+              <motion.div whileTap={{ scale: 0.95 }}>
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  className="flex items-center gap-2 w-full md:w-auto"
+                >
                   <Plus size={16} />
                   <span>New</span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setCreateType('folder');
-                    setIsCreateDialogOpen(true);
-                  }}
-                >
-                  <FolderPlus size={16} className="mr-2" />
-                  New Folder
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setCreateType('page');
-                    setIsCreateDialogOpen(true);
-                  }}
-                >
-                  <FileText size={16} className="mr-2" />
-                  New Page
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="py-8 space-y-8">
         {/* Navigation Bar */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -350,13 +332,13 @@ const BlockEditorPage: React.FC = () => {
             </Button>
           </div>
           
-          <div className="flex-1 flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-lg text-sm">
-            <span className="text-muted-foreground">Home</span>
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm min-w-0 mx-4">
+            <span className="text-muted-foreground flex-shrink-0">Home</span>
             {breadcrumbs.map((crumb, index) => (
               <React.Fragment key={crumb.id}>
-                <span className="text-muted-foreground">/</span>
+                <span className="text-muted-foreground flex-shrink-0">/</span>
                 <button
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-primary truncate"
                   onClick={() => handleNavigation(crumb.id)}
                 >
                   {crumb.title}
