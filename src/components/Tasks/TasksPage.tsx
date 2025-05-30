@@ -17,6 +17,7 @@ import { Task } from '@/types';
 import AutoTaskReportDialog from './AutoTaskReportDialog';
 import autoTaskService from '@/services/autoTaskService';
 import { useToast } from '@/hooks/use-toast';
+import { getNotionItems, createNotionItem } from '@/services/notionService';
 
 const TasksPage = () => {
   const { tasks, addTask, toggleTaskCompletion, deleteTask, analytics, updateTask, notes, addNote } = useAppContext();
@@ -67,21 +68,29 @@ const TasksPage = () => {
           // Process the task with AI
           const reportResult = await autoTaskService.processAutoTask(task);
           
-          // Create a new note with the report
-          const noteData = {
+          // Ensure "AutoTask" folder exists in NotionEditor
+          let autoTaskFolder = (await getNotionItems(null)).find(item => item.title === 'AutoTask' && item.type === 'folder');
+          if (!autoTaskFolder) {
+            autoTaskFolder = await createNotionItem({
+              title: 'AutoTask',
+              type: 'folder',
+              parent_id: null
+            });
+          }
+
+          // Create a new page in the "AutoTask" folder with the report
+          const newPage = await createNotionItem({
             title: reportResult.title,
-            content: reportResult.content,
-            tags: ['autotask', 'report']
-          };
-          
-          // Add the note and get the saved note with its ID
-          const newNoteId = await addNote(noteData);
-          
-          // Update the task with the linked note ID and mark as completed
+            type: 'page',
+            parent_id: autoTaskFolder.id,
+            content: reportResult.content
+          });
+
+          // Update the task with the linked page ID and mark as completed
           updateTask({
             ...task,
             isProcessing: false,
-            linkedNoteId: newNoteId,
+            linkedNoteId: newPage.id, // Link to the Notion page ID
             completed: true // Automatically mark as completed
           });
           
@@ -95,7 +104,7 @@ const TasksPage = () => {
           
           toast({
             title: "AutoTask Completed",
-            description: `Report generated for: ${task.title}`
+            description: `Report saved in NotionEditor for: ${task.title}`
           });
         } catch (error) {
           console.error(`Error processing AutoTask "${task.title}":`, error);
@@ -116,7 +125,7 @@ const TasksPage = () => {
     };
     
     processAutoTasks();
-  }, [tasks, updateTask, addNote, notes, toast]);
+  }, [tasks, updateTask, toast]);
 
   const filteredTasks = tasks.filter(
     (task) =>
