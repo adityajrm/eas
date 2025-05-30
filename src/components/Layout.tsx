@@ -1,8 +1,9 @@
+
 import React from 'react';
 import Sidebar from './Sidebar';
 import { useAppContext } from '../context/AppContext';
 import Dashboard from './Dashboard';
-import BlockEditorPage from './NotionEditor/BlockEditorPage';
+import BlockEditorPage from './BlockEditor/BlockEditorPage';
 import TasksPage from './Tasks/TasksPage';
 import KnowledgeBasePage from './KnowledgeBase/KnowledgeBasePage';
 import CalendarPage from './Calendar/CalendarPage';

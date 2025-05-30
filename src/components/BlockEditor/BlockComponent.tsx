@@ -307,17 +307,23 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
       
       default:
         return (
-          <div
-            ref={contentRef}
-            contentEditable
-            className={baseClasses}
-            onInput={handleContentChange}
-            onKeyDown={handleKeyDown}
-            onFocus={onFocus}
-            placeholder="Type '/' for commands"
-            suppressContentEditableWarning={true}
-          >
-            {block.content}
+          <div className="relative">
+            <div
+              ref={contentRef}
+              contentEditable
+              className={baseClasses}
+              onInput={handleContentChange}
+              onKeyDown={handleKeyDown}
+              onFocus={onFocus}
+              suppressContentEditableWarning={true}
+            >
+              {block.content}
+            </div>
+            {!block.content && (
+              <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground">
+                Type '/' for commands
+              </div>
+            )}
           </div>
         );
     }
