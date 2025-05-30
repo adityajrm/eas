@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -26,11 +25,9 @@ const AutoTaskReportDialog = ({
     return text
       .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold my-4">$1</h1>')
       .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold my-3">$1</h2>')
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold my-2">$1</h3>')
       .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/^(\d+)\. (.*$)/gim, '<li class="ml-6">$1. $2</li>')
+      .replace(/^\* (.*$)/gim, '<ul><li class="ml-4 list-disc">$1</li></ul>')
       .replace(/\n\n/g, '<br /><br />');
   };
 
