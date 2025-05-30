@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DndContext,
@@ -22,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Block, BlockType } from '@/types/blocks';
+import { Block, BlockType, SlashCommand } from '@/types/blocks';
 import { BlockComponent } from './BlockComponent';
 import { SlashCommandMenu } from './SlashCommandMenu';
 import { exportToMarkdown, importFromMarkdown } from '@/utils/blockUtils';
@@ -158,9 +157,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   }, [blocks, handleAddBlock, handleDeleteBlock]);
 
-  const handleSlashCommand = useCallback((type: BlockType) => {
+  const handleSlashCommand = useCallback((command: SlashCommand) => {
     if (slashMenuBlockId) {
-      handleBlockTypeChange(slashMenuBlockId, type);
+      handleBlockTypeChange(slashMenuBlockId, command.type);
       setFocusedBlockId(slashMenuBlockId);
     }
     setShowSlashMenu(false);

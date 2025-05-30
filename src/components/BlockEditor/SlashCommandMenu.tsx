@@ -5,6 +5,7 @@ import { SlashCommand, BlockType } from '@/types/blocks';
 import { cn } from '@/lib/utils';
 
 interface SlashCommandMenuProps {
+  isOpen: boolean;
   position: { x: number; y: number };
   onSelect: (command: SlashCommand) => void;
   onClose: () => void;
@@ -26,6 +27,7 @@ const commands: SlashCommand[] = [
 ];
 
 export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
+  isOpen,
   position,
   onSelect,
   onClose
@@ -81,6 +83,8 @@ export const SlashCommandMenu: React.FC<SlashCommandMenuProps> = ({
       default: return <Type size={16} />;
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
