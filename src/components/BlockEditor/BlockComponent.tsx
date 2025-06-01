@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronRight, ChevronDown, CheckSquare, Square, Lightbulb, AlertTriangle, AlertCircle, CheckCircle, Wand2 } from 'lucide-react';
+import { GripVertical, ChevronRight, ChevronDown, CheckSquare, Square, Lightbulb, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
 import { Block, BlockType } from '@/types/blocks';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,6 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [showAIButton, setShowAIButton] = useState(false);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -70,45 +69,10 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
     }
   }, [focused]);
 
-  // Show AI button when there's selected text
-  useEffect(() => {
-    setShowAIButton(!!selectedText);
-  }, [selectedText]);
-
   const handleContentChange = () => {
     if (contentRef.current) {
-      // Save cursor position before updating
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const cursorPosition = range?.startOffset || 0;
       const textContent = contentRef.current.innerText || '';
-      
-      // Update content without affecting cursor
       onContentChange(block.id, textContent);
-      
-      // Restore cursor position after a brief delay to allow React to update
-      setTimeout(() => {
-        if (contentRef.current && selection && range) {
-          try {
-            const newRange = document.createRange();
-            const textNode = contentRef.current.firstChild || contentRef.current;
-            const maxOffset = textNode.textContent?.length || 0;
-            const safeOffset = Math.min(cursorPosition, maxOffset);
-            
-            if (textNode.nodeType === Node.TEXT_NODE) {
-              newRange.setStart(textNode, safeOffset);
-            } else {
-              newRange.setStart(textNode, 0);
-            }
-            newRange.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-          } catch (e) {
-            // Fallback: just focus the element
-            contentRef.current.focus();
-          }
-        }
-      }, 0);
     }
   };
 
@@ -122,10 +86,6 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
 
   const handleToggleCollapse = () => {
     onContentChange(block.id, block.content);
-  };
-
-  const handleAIClick = () => {
-    onAIGenerate(block.id, selectedText);
   };
 
   const renderBlockContent = () => {
@@ -380,7 +340,7 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-md transition-all duration-200 p-2",
+        "group relative rounded-md transition-colors duration-200 p-2",
         isHovered && "bg-accent/30"
       )}
       onMouseEnter={() => setIsHovered(true)}
@@ -403,19 +363,6 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
         <div className="flex-1 min-w-0">
           {renderBlockContent()}
         </div>
-
-        {/* AI Generate Button */}
-        {(isHovered || showAIButton) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleAIClick}
-            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2 text-xs flex items-center gap-1 flex-shrink-0"
-          >
-            <Wand2 size={12} />
-            <span className="hidden sm:inline">AI</span>
-          </Button>
-        )}
       </div>
     </div>
   );

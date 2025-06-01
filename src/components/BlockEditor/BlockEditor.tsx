@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import { Block, BlockType, SlashCommand } from '@/types/blocks';
 import { BlockComponent } from './BlockComponent';
 import { SlashCommandMenu } from './SlashCommandMenu';
@@ -54,8 +53,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [targetBlockId, setTargetBlockId] = useState<string | null>(null);
   const [selectedText, setSelectedText] = useState('');
-  const lastSaveRef = useRef<string>('');
-  const { toast } = useToast();
+  const blocksRef = useRef<Block[]>(initialBlocks);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -77,18 +76,25 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     }
   }, []);
 
-  // Auto-save with debouncing and duplicate prevention
+  // Silent auto-save without affecting UI state
   useEffect(() => {
-    const currentState = JSON.stringify(blocks);
-    if (currentState !== lastSaveRef.current && blocks.length > 0) {
-      const timeoutId = setTimeout(() => {
-        if (onSave) {
-          onSave(blocks);
-          lastSaveRef.current = currentState;
-        }
-      }, 1000);
-      return () => clearTimeout(timeoutId);
+    blocksRef.current = blocks;
+    
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      if (onSave && blocks.length > 0) {
+        onSave(blocksRef.current);
+      }
+    }, 2000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [blocks, onSave]);
 
   const createBlock = (type: BlockType = 'text', content: string = ''): Block => ({
@@ -195,27 +201,15 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       
       if (response.text) {
         if (targetBlockId) {
-          // Replace content in existing block with typewriter effect
           await typewriterEffect(targetBlockId, response.text);
         } else {
-          // Create new block with generated content
           const newBlock = createBlock('text', '');
           setBlocks(prev => [...prev, newBlock]);
           await typewriterEffect(newBlock.id, response.text);
         }
-        
-        toast({
-          title: "AI Content Generated",
-          description: "Content has been generated successfully",
-        });
       }
     } catch (error) {
       console.error('Error generating AI content:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate AI content. Please check your AI configuration.",
-        variant: "destructive",
-      });
     } finally {
       setIsGenerating(false);
       setShowAIDialog(false);
