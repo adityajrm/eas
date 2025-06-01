@@ -163,11 +163,8 @@ const BlockEditorPage: React.FC = () => {
 
       await updateNotionItem(updatedItem);
       setItems(items.map(i => i.id === updatedItem.id ? updatedItem : i));
-      
-      toast({
-        title: "Success",
-        description: "Page saved successfully",
-      });
+      setSelectedItem(updatedItem); // Update selectedItem to prevent repeated toast
+
     } catch (error) {
       console.error('Error saving item:', error);
       toast({
@@ -335,7 +332,7 @@ const BlockEditorPage: React.FC = () => {
           <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm min-w-0 mx-4">
             <span className="text-muted-foreground flex-shrink-0">Home</span>
             {breadcrumbs.map((crumb, index) => (
-              <React.Fragment key={crumb.id}>
+              <div key={crumb.id}>
                 <span className="text-muted-foreground flex-shrink-0">/</span>
                 <button
                   className="hover:text-primary truncate"
@@ -343,7 +340,7 @@ const BlockEditorPage: React.FC = () => {
                 >
                   {crumb.title}
                 </button>
-              </React.Fragment>
+              </div>
             ))}
           </div>
 
