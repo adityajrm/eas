@@ -56,6 +56,17 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
   useEffect(() => {
     if (focused && contentRef.current) {
       contentRef.current.focus();
+      // Set cursor to end of content
+      const range = document.createRange();
+      const selection = window.getSelection();
+      if (contentRef.current.childNodes.length > 0) {
+        range.setStartAfter(contentRef.current.lastChild!);
+      } else {
+        range.setStart(contentRef.current, 0);
+      }
+      range.collapse(true);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
     }
   }, [focused]);
 
@@ -66,7 +77,38 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
 
   const handleContentChange = () => {
     if (contentRef.current) {
-      onContentChange(block.id, contentRef.current.innerText || '');
+      // Save cursor position before updating
+      const selection = window.getSelection();
+      const range = selection?.getRangeAt(0);
+      const cursorPosition = range?.startOffset || 0;
+      const textContent = contentRef.current.innerText || '';
+      
+      // Update content without affecting cursor
+      onContentChange(block.id, textContent);
+      
+      // Restore cursor position after a brief delay to allow React to update
+      setTimeout(() => {
+        if (contentRef.current && selection && range) {
+          try {
+            const newRange = document.createRange();
+            const textNode = contentRef.current.firstChild || contentRef.current;
+            const maxOffset = textNode.textContent?.length || 0;
+            const safeOffset = Math.min(cursorPosition, maxOffset);
+            
+            if (textNode.nodeType === Node.TEXT_NODE) {
+              newRange.setStart(textNode, safeOffset);
+            } else {
+              newRange.setStart(textNode, 0);
+            }
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          } catch (e) {
+            // Fallback: just focus the element
+            contentRef.current.focus();
+          }
+        }
+      }, 0);
     }
   };
 
@@ -95,13 +137,14 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
           <div
             ref={contentRef}
             contentEditable
-            className={cn(baseClasses, "text-3xl font-bold py-2")}
+            className={cn(baseClasses, "text-2xl sm:text-3xl font-bold py-2")}
             onInput={handleContentChange}
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-            dangerouslySetInnerHTML={{ __html: block.content }}
-          />
+          >
+            {block.content}
+          </div>
         );
       
       case 'heading2':
@@ -109,13 +152,14 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
           <div
             ref={contentRef}
             contentEditable
-            className={cn(baseClasses, "text-2xl font-semibold py-2")}
+            className={cn(baseClasses, "text-xl sm:text-2xl font-semibold py-2")}
             onInput={handleContentChange}
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-            dangerouslySetInnerHTML={{ __html: block.content }}
-          />
+          >
+            {block.content}
+          </div>
         );
       
       case 'heading3':
@@ -123,19 +167,20 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
           <div
             ref={contentRef}
             contentEditable
-            className={cn(baseClasses, "text-xl font-medium py-1")}
+            className={cn(baseClasses, "text-lg sm:text-xl font-medium py-1")}
             onInput={handleContentChange}
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             suppressContentEditableWarning={true}
-            dangerouslySetInnerHTML={{ __html: block.content }}
-          />
+          >
+            {block.content}
+          </div>
         );
       
       case 'bulletList':
         return (
           <div className="flex items-start gap-2">
-            <span className="text-muted-foreground mt-2">•</span>
+            <span className="text-muted-foreground mt-2 flex-shrink-0">•</span>
             <div
               ref={contentRef}
               contentEditable
@@ -144,15 +189,16 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
       
       case 'numberedList':
         return (
           <div className="flex items-start gap-2">
-            <span className="text-muted-foreground mt-2">{index + 1}.</span>
+            <span className="text-muted-foreground mt-2 flex-shrink-0">{index + 1}.</span>
             <div
               ref={contentRef}
               contentEditable
@@ -161,8 +207,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
       
@@ -172,7 +219,7 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="p-0 h-6 w-6 mt-1"
+              className="p-0 h-6 w-6 mt-1 flex-shrink-0"
               onClick={handleCheckboxToggle}
             >
               {block.checked ? (
@@ -189,8 +236,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
       
@@ -201,7 +249,7 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="p-0 h-6 w-6 mt-1"
+                className="p-0 h-6 w-6 mt-1 flex-shrink-0"
                 onClick={handleToggleCollapse}
               >
                 {block.collapsed ? (
@@ -218,8 +266,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
                 onKeyDown={handleKeyDown}
                 onFocus={onFocus}
                 suppressContentEditableWarning={true}
-                dangerouslySetInnerHTML={{ __html: block.content }}
-              />
+              >
+                {block.content}
+              </div>
             </div>
             {!block.collapsed && block.children && (
               <div className="ml-8 space-y-2">
@@ -240,14 +289,15 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
       
       case 'code':
         return (
-          <div className="bg-muted rounded-md p-4 font-mono text-sm">
+          <div className="bg-muted rounded-md p-4 font-mono text-sm overflow-x-auto">
             <div
               ref={contentRef}
               contentEditable
@@ -256,8 +306,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
       
@@ -279,7 +330,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
         return (
           <div className={cn("border rounded-md p-4", calloutColors[block.calloutType || 'info'])}>
             <div className="flex items-start gap-2">
-              {calloutIcons[block.calloutType || 'info']}
+              <div className="flex-shrink-0 mt-1">
+                {calloutIcons[block.calloutType || 'info']}
+              </div>
               <div
                 ref={contentRef}
                 contentEditable
@@ -288,8 +341,9 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
                 onKeyDown={handleKeyDown}
                 onFocus={onFocus}
                 suppressContentEditableWarning={true}
-                dangerouslySetInnerHTML={{ __html: block.content }}
-              />
+              >
+                {block.content}
+              </div>
             </div>
           </div>
         );
@@ -308,10 +362,11 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
               onKeyDown={handleKeyDown}
               onFocus={onFocus}
               suppressContentEditableWarning={true}
-              dangerouslySetInnerHTML={{ __html: block.content }}
-            />
+            >
+              {block.content}
+            </div>
             {!block.content && (
-              <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground">
+              <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground text-sm sm:text-base">
                 Type '/' for commands
               </div>
             )}
@@ -355,10 +410,10 @@ export const BlockComponent: React.FC<BlockComponentProps> = ({
             variant="ghost"
             size="sm"
             onClick={handleAIClick}
-            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2 text-xs flex items-center gap-1"
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2 text-xs flex items-center gap-1 flex-shrink-0"
           >
             <Wand2 size={12} />
-            AI
+            <span className="hidden sm:inline">AI</span>
           </Button>
         )}
       </div>

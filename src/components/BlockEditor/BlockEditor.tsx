@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DndContext,
@@ -15,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { Plus, Save, FileDown, FileUp, Wand2 } from 'lucide-react';
+import { Plus, Save, FileDown, FileUp, Wand2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -32,13 +33,15 @@ interface BlockEditorProps {
   onSave?: (blocks: Block[]) => void;
   title?: string;
   onTitleChange?: (title: string) => void;
+  onBack?: () => void;
 }
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({
   initialBlocks = [],
   onSave,
   title = 'Untitled',
-  onTitleChange
+  onTitleChange,
+  onBack
 }) => {
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
@@ -188,10 +191,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
     setIsGenerating(true);
     try {
-      const contextMessage = aiContext 
-        ? `Context: "${aiContext}"\n\nPrompt: ${aiPrompt}`
-        : aiPrompt;
-
       const response = await callAINoteAPI(aiPrompt, aiContext);
       
       if (response.text) {
@@ -282,102 +281,121 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex-1">
-          <Input
-            value={title}
-            onChange={(e) => onTitleChange?.(e.target.value)}
-            className="text-3xl font-bold border-none bg-transparent p-0 focus-visible:ring-0"
-            placeholder="Untitled"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          {isGenerating && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
-              Generating...
+    <div className="min-h-screen bg-background">
+      {/* Header matching BlockEditorPage structure */}
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {onBack && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBack}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft size={16} />
+                <span className="hidden sm:inline">Back to Notes</span>
+              </Button>
+            )}
+            
+            <div className="flex-1 max-w-md mx-4">
+              <Input
+                value={title}
+                onChange={(e) => onTitleChange?.(e.target.value)}
+                className="text-lg font-semibold border-none bg-transparent p-0 focus-visible:ring-0"
+                placeholder="Untitled"
+              />
             </div>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleAIGenerate()}
-            className="flex items-center gap-2"
-          >
-            <Wand2 size={16} />
-            AI Generate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            className="flex items-center gap-2"
-          >
-            <FileDown size={16} />
-            Export
-          </Button>
-          <label>
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="flex items-center gap-2"
-            >
-              <span>
-                <FileUp size={16} />
-                Import
-              </span>
-            </Button>
-            <input
-              type="file"
-              accept=".md,.txt"
-              onChange={handleImport}
-              className="hidden"
-            />
-          </label>
+
+            <div className="flex items-center gap-2">
+              {isGenerating && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                  <span className="hidden sm:inline">Generating...</span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAIGenerate()}
+                className="flex items-center gap-2"
+              >
+                <Wand2 size={16} />
+                <span className="hidden sm:inline">AI Generate</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                className="flex items-center gap-2"
+              >
+                <FileDown size={16} />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="flex items-center gap-2"
+                >
+                  <span>
+                    <FileUp size={16} />
+                    <span className="hidden sm:inline">Import</span>
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept=".md,.txt"
+                  onChange={handleImport}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Editor */}
-      <div className="space-y-2">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToVerticalAxis]}
-        >
-          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-            {blocks.map((block, index) => (
-              <BlockComponent
-                key={block.id}
-                block={block}
-                index={index}
-                onContentChange={handleBlockContentChange}
-                onTypeChange={handleBlockTypeChange}
-                onAddBlock={handleAddBlock}
-                onDeleteBlock={handleDeleteBlock}
-                onKeyDown={handleKeyDown}
-                onAIGenerate={handleAIGenerate}
-                focused={focusedBlockId === block.id}
-                onFocus={() => setFocusedBlockId(block.id)}
-                selectedText={selectedText}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+      {/* Editor Content */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-2">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            modifiers={[restrictToVerticalAxis]}
+          >
+            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+              {blocks.map((block, index) => (
+                <BlockComponent
+                  key={block.id}
+                  block={block}
+                  index={index}
+                  onContentChange={handleBlockContentChange}
+                  onTypeChange={handleBlockTypeChange}
+                  onAddBlock={handleAddBlock}
+                  onDeleteBlock={handleDeleteBlock}
+                  onKeyDown={handleKeyDown}
+                  onAIGenerate={handleAIGenerate}
+                  focused={focusedBlockId === block.id}
+                  onFocus={() => setFocusedBlockId(block.id)}
+                  selectedText={selectedText}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
 
-        {/* Add Block Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleAddBlock(blocks.length - 1)}
-          className="w-full justify-start text-muted-foreground hover:text-foreground"
-        >
-          <Plus size={16} className="mr-2" />
-          Add a block
-        </Button>
+          {/* Add Block Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleAddBlock(blocks.length - 1)}
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+          >
+            <Plus size={16} className="mr-2" />
+            Add a block
+          </Button>
+        </div>
       </div>
 
       {/* Slash Command Menu */}
@@ -393,7 +411,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
       {/* AI Generate Dialog */}
       <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle>AI Generate Content</DialogTitle>
             <DialogDescription>
