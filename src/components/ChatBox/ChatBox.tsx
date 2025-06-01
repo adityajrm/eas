@@ -739,7 +739,7 @@ const ChatBox = () => {
                     transition={{ duration: 0.3 }} 
                     className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.sender === 'user' ? 'user-message-bubble ml-4' : 'bg-muted mr-4'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.sender === 'user' ? 'bg-primary text-white' : 'bg-muted'}`}>
                       <p className="text-sm">{message.text}</p>
                     </div>
                   </motion.div>
