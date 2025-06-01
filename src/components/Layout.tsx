@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Sidebar from './Sidebar';
 import { useAppContext } from '../context/AppContext';
@@ -10,6 +9,7 @@ import CalendarPage from './Calendar/CalendarPage';
 import SettingsPage from './Settings/SettingsPage';
 import PageNavigation from './Navigation/PageNavigation';
 import ChatBox from './ChatBox/ChatBox';
+import MobileChatBox from './ChatBox/MobileChatBox'; // Import MobileChatBox
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu, MessageSquare } from 'lucide-react';
 import { Button } from './ui/button';
@@ -91,7 +91,6 @@ const Layout: React.FC = () => {
       )}
       
       <main className={`flex-1 overflow-y-auto p-3 md:p-6 bg-background/80 backdrop-blur-sm ${isMobile ? 'pt-14 pb-16' : ''}`}>
-        <PageNavigation />
         <div className="mt-2 md:mt-0">
           {renderContent()}
         </div>
@@ -101,46 +100,20 @@ const Layout: React.FC = () => {
       {!isMobile ? (
         <ChatBox />
       ) : (
-        <MobileChatButton isOpen={showMobileChat} setIsOpen={setShowMobileChat} />
+        <>
+          <MobileChatBox isOpen={showMobileChat} onClose={() => setShowMobileChat(false)} />
+          {!showMobileChat && (
+            <Button
+              className="fixed bottom-0 left-0 right-0 h-14 rounded-none bg-assistant-primary text-white flex items-center justify-center gap-2 z-30"
+              onClick={() => setShowMobileChat(true)}
+            >
+              <MessageSquare size={20} />
+              <span>Chat with Assistant</span>
+            </Button>
+          )}
+        </>
       )}
     </div>
-  );
-};
-
-// Updated Mobile Chat Button component
-interface MobileChatButtonProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-}
-
-const MobileChatButton: React.FC<MobileChatButtonProps> = ({ isOpen, setIsOpen }) => {
-  return (
-    <>
-      {isOpen ? (
-        <div className="fixed inset-0 z-40 flex items-end justify-center">
-          <div className="w-full h-full flex flex-col">
-            <ChatBox />
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="absolute top-2 right-2 z-50 bg-background/80 rounded-full p-2"
-            >
-              <span className="sr-only">Close chat</span>
-              ×
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <Button
-          className="fixed bottom-0 left-0 right-0 h-14 rounded-none bg-assistant-primary text-white flex items-center justify-center gap-2 z-30"
-          onClick={() => setIsOpen(true)}
-        >
-          <MessageSquare size={20} />
-          <span>Chat with Assistant</span>
-        </Button>
-      )}
-    </>
   );
 };
 
