@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ArrowLeft, Save, FileDown, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +22,20 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [content, setContent] = useState(initialContent);
   const [insertContentCallback, setInsertContentCallback] = useState<((content: string) => void) | null>(null);
   const { toast } = useToast();
+
+  // Listen for AI content insertion
+  useEffect(() => {
+    const handleInsertContent = (event: CustomEvent) => {
+      if (event.detail && insertContentCallback) {
+        insertContentCallback(event.detail);
+      }
+    };
+
+    window.addEventListener('insertAIContent', handleInsertContent as EventListener);
+    return () => {
+      window.removeEventListener('insertAIContent', handleInsertContent as EventListener);
+    };
+  }, [insertContentCallback]);
 
   const handleSave = useCallback((newContent: string) => {
     setContent(newContent);

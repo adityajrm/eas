@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Home, Grid3X3, List, Search, Plus, FolderPlus, FileText, Folder, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -12,7 +11,15 @@ import { NotionItem, NotionViewMode, NotionBreadcrumb } from '@/types/notion';
 import { getNotionItems, createNotionItem, updateNotionItem, deleteNotionItem, getNotionItemById, searchNotionItems } from '@/services/notionService';
 import { BlockEditor } from './BlockEditor';
 
-const BlockEditorPage: React.FC = () => {
+interface BlockEditorPageProps {
+  onContentChange?: (content: string) => void;
+  onInsertContent?: (content: string) => void;
+}
+
+const BlockEditorPage: React.FC<BlockEditorPageProps> = ({ 
+  onContentChange,
+  onInsertContent 
+}) => {
   const [items, setItems] = useState<NotionItem[]>([]);
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<NotionBreadcrumb[]>([]);
@@ -151,6 +158,21 @@ const BlockEditorPage: React.FC = () => {
     }
   };
 
+  // Listen for AI content insertion
+  useEffect(() => {
+    const handleInsertContent = (event: CustomEvent) => {
+      if (selectedItem && event.detail) {
+        const newContent = selectedItem.content + '\n\n' + event.detail;
+        handleSaveItem(newContent);
+      }
+    };
+
+    window.addEventListener('insertAIContent', handleInsertContent as EventListener);
+    return () => {
+      window.removeEventListener('insertAIContent', handleInsertContent as EventListener);
+    };
+  }, [selectedItem]);
+
   const handleSaveItem = async (content: string) => {
     if (!selectedItem) return;
 
@@ -164,6 +186,11 @@ const BlockEditorPage: React.FC = () => {
       await updateNotionItem(updatedItem);
       setItems(items.map(i => i.id === updatedItem.id ? updatedItem : i));
       setSelectedItem(updatedItem);
+
+      // Notify parent of content change
+      if (onContentChange) {
+        onContentChange(content);
+      }
 
     } catch (error) {
       console.error('Error saving item:', error);

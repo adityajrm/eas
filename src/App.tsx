@@ -22,19 +22,48 @@ const AppContent: React.FC = () => {
   const isMobile = useIsMobile();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [currentContent, setCurrentContent] = useState('');
+
+  // Handle text selection for notes mode
+  useEffect(() => {
+    const handleSelection = () => {
+      if (currentView === 'notes') {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          setSelectedText(selection.toString().trim());
+        }
+      }
+    };
+
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('keyup', handleSelection);
+
+    return () => {
+      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('keyup', handleSelection);
+    };
+  }, [currentView]);
 
   const renderContent = () => {
-    const baseClasses = "flex-1 overflow-auto";
+    const baseClasses = "flex-1 overflow-auto transition-all duration-300 ease-in-out";
     const contentClasses = currentView === 'notes' 
-      ? baseClasses // Notes page handles its own padding
-      : `${baseClasses} p-6`; // Other pages get standard padding
+      ? `${baseClasses} ${isAISidebarOpen ? 'mr-0' : 'mr-0'}` // Notes page handles its own padding
+      : `${baseClasses} p-6 ${isAISidebarOpen ? 'mr-0' : 'mr-0'}`; // Other pages get standard padding
 
     const content = (() => {
       switch (currentView) {
         case 'dashboard':
           return <Dashboard />;
         case 'notes':
-          return <BlockEditorPage />;
+          return (
+            <BlockEditorPage 
+              onContentChange={setCurrentContent}
+              onInsertContent={(content) => {
+                // This will be handled by the BlockEditor component
+              }}
+            />
+          );
         case 'tasks':
           return <TasksPage />;
         case 'knowledge':
@@ -52,7 +81,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Mobile Sidebar */}
       {isMobile ? (
         <>
@@ -73,19 +102,40 @@ const AppContent: React.FC = () => {
         </>
       ) : (
         /* Desktop Sidebar */
-        <Sidebar />
+        <div className="transition-all duration-300 ease-in-out">
+          <Sidebar />
+        </div>
       )}
 
       {/* Main Content */}
-      {renderContent()}
+      <div className={cn(
+        "flex-1 flex transition-all duration-300 ease-in-out",
+        isAISidebarOpen ? "mr-80" : "mr-0"
+      )}>
+        {renderContent()}
+      </div>
 
-      {/* AI Sidebar - part of main layout, not overlay */}
-      <AISidebar
-        isOpen={isAISidebarOpen}
-        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
-        mode={currentView === 'notes' ? 'notes' : 'chat'}
-        currentView={currentView}
-      />
+      {/* AI Sidebar - Fixed position with animations */}
+      <div className={cn(
+        "fixed right-0 top-0 h-full z-40 transition-transform duration-300 ease-in-out",
+        isAISidebarOpen ? "translate-x-0" : "translate-x-full"
+      )}>
+        <AISidebar
+          isOpen={isAISidebarOpen}
+          onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
+          mode={currentView === 'notes' ? 'notes' : 'chat'}
+          currentView={currentView}
+          currentContent={currentContent}
+          selectedText={selectedText}
+          onInsertContent={(content) => {
+            // This will be passed down to the editor
+            if (currentView === 'notes') {
+              const event = new CustomEvent('insertAIContent', { detail: content });
+              window.dispatchEvent(event);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 };
