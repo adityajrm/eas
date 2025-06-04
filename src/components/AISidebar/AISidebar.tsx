@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, ArrowLeft, Plus, Check, Calendar, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, MessageCircle, Wand2, FileText, CheckSquare, ChevronLeft, ChevronRight, Send, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { callAINoteAPI } from '@/services/aiNoteService';
 import { callGeminiAPI } from '@/services/aiService';
+import { useAppContext } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
 interface AISidebarProps {
@@ -48,8 +49,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string; timestamp?: string }[]>([]);
-  const [pendingResponse, setPendingResponse] = useState<string>('');
   const { toast } = useToast();
+  const { addTask } = useAppContext();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -61,7 +62,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [chatHistory, pendingResponse]);
+  }, [chatHistory]);
 
   // Update context when selected text changes
   useEffect(() => {
@@ -95,15 +96,12 @@ export const AISidebar: React.FC<AISidebarProps> = ({
 
   const createTaskFromSuggestion = async (suggestion: TaskSuggestion) => {
     try {
-      // Import task service dynamically to avoid circular dependencies
-      const { createTask } = await import('@/services/databaseService');
-      
-      await createTask({
+      await addTask({
         title: suggestion.title,
         description: suggestion.description,
         priority: suggestion.priority,
-        due_date: suggestion.dueDate ? new Date(suggestion.dueDate) : undefined,
-        status: 'pending'
+        dueDate: suggestion.dueDate ? new Date(suggestion.dueDate) : undefined,
+        completed: false
       });
       
       toast({
@@ -145,7 +143,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     // Add user message immediately
     addUserMessage(prompt);
     setIsGenerating(true);
-    setPendingResponse('');
     
     try {
       let response;
@@ -330,7 +327,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
                     }}
                     className="ml-0"
                   >
-                    <Check size={14} className="mr-1" />
+                    <CheckSquare size={14} className="mr-1" />
                     Create Task
                   </Button>
                 </div>

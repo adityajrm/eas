@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { AISidebar } from './components/AISidebar/AISidebar';
+import { cn } from '@/lib/utils';
 
 const AppContent: React.FC = () => {
   const { currentView } = useAppContext();
@@ -107,18 +108,18 @@ const AppContent: React.FC = () => {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content Container */}
       <div className={cn(
-        "flex-1 flex transition-all duration-300 ease-in-out",
+        "flex flex-1 transition-all duration-300 ease-in-out",
         isAISidebarOpen ? "mr-80" : "mr-0"
       )}>
         {renderContent()}
       </div>
 
-      {/* AI Sidebar - Fixed position with animations */}
+      {/* AI Sidebar */}
       <div className={cn(
-        "fixed right-0 top-0 h-full z-40 transition-transform duration-300 ease-in-out",
-        isAISidebarOpen ? "translate-x-0" : "translate-x-full"
+        "transition-all duration-300 ease-in-out",
+        isAISidebarOpen ? "w-80" : "w-0"
       )}>
         <AISidebar
           isOpen={isAISidebarOpen}
