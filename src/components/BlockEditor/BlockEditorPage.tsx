@@ -10,7 +10,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { NotionItem, NotionViewMode, NotionBreadcrumb } from '@/types/notion';
 import { getNotionItems, createNotionItem, updateNotionItem, deleteNotionItem, getNotionItemById, searchNotionItems } from '@/services/notionService';
 import { BlockEditor } from './BlockEditor';
-import { importFromMarkdown } from '@/utils/blockUtils';
+import { AISidebar } from '../AISidebar/AISidebar';
 
 const BlockEditorPage: React.FC = () => {
   const [items, setItems] = useState<NotionItem[]>([]);
@@ -25,6 +25,7 @@ const BlockEditorPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [history, setHistory] = useState<(string | null)[]>([null]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -102,7 +103,7 @@ const BlockEditorPage: React.FC = () => {
         title: newItemTitle,
         type: createType,
         parent_id: currentPath,
-        content: createType === 'page' ? JSON.stringify([]) : undefined,
+        content: createType === 'page' ? '' : undefined,
       });
 
       setItems([...items, newItem]);
@@ -151,19 +152,19 @@ const BlockEditorPage: React.FC = () => {
     }
   };
 
-  const handleSaveItem = async (blocks: any[]) => {
+  const handleSaveItem = async (content: string) => {
     if (!selectedItem) return;
 
     try {
       const updatedItem: NotionItem = {
         ...selectedItem,
-        content: JSON.stringify(blocks),
+        content: content,
         updated_at: new Date(),
       };
 
       await updateNotionItem(updatedItem);
       setItems(items.map(i => i.id === updatedItem.id ? updatedItem : i));
-      setSelectedItem(updatedItem); // Update selectedItem to prevent repeated toast
+      setSelectedItem(updatedItem);
 
     } catch (error) {
       console.error('Error saving item:', error);
@@ -197,23 +198,9 @@ const BlockEditorPage: React.FC = () => {
   const getContentPreview = (content: string | undefined): string => {
     if (!content) return '';
     
-    try {
-      const blocks = JSON.parse(content);
-      if (Array.isArray(blocks) && blocks.length > 0) {
-        const textContent = blocks
-          .filter(block => block.content && block.type !== 'divider')
-          .slice(0, 2)
-          .map(block => block.content)
-          .join(' ');
-        return textContent.length > 100 ? textContent.substring(0, 100) + '...' : textContent;
-      }
-    } catch {
-      // Fallback for old HTML content
-      const plainText = content.replace(/<[^>]*>/g, '').trim();
-      return plainText.length > 100 ? plainText.substring(0, 100) + '...' : plainText;
-    }
-    
-    return '';
+    // Strip HTML tags for preview
+    const plainText = content.replace(/<[^>]*>/g, '').trim();
+    return plainText.length > 100 ? plainText.substring(0, 100) + '...' : plainText;
   };
 
   const filteredItems = searchQuery 
@@ -224,47 +211,24 @@ const BlockEditorPage: React.FC = () => {
     : items;
 
   if (isEditing && selectedItem) {
-    let initialBlocks = [];
-    try {
-      initialBlocks = selectedItem.content ? JSON.parse(selectedItem.content) : [];
-    } catch {
-      // Handle legacy HTML content by converting to blocks
-      initialBlocks = selectedItem.content ? importFromMarkdown(selectedItem.content.replace(/<[^>]*>/g, '')) : [];
-    }
-
     return (
       <div className="min-h-screen bg-background">
-        <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-          <div>
-            <div className="flex items-center justify-between h-16">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setIsEditing(false);
-                  setSelectedItem(null);
-                }}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft size={16} />
-                Back to Notes
-              </Button>
-            </div>
-          </div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto py-8">
-          <BlockEditor
-            initialBlocks={initialBlocks}
-            onSave={handleSaveItem}
-            title={selectedItem.title}
-            onTitleChange={(newTitle) => {
-              if (selectedItem) {
-                setSelectedItem({ ...selectedItem, title: newTitle });
-              }
-            }}
-          />
-        </div>
+        <BlockEditor
+          initialContent={selectedItem.content || ''}
+          onSave={handleSaveItem}
+          title={selectedItem.title}
+          onTitleChange={(newTitle) => {
+            if (selectedItem) {
+              const updatedItem = { ...selectedItem, title: newTitle };
+              setSelectedItem(updatedItem);
+              updateNotionItem(updatedItem);
+            }
+          }}
+          onBack={() => {
+            setIsEditing(false);
+            setSelectedItem(null);
+          }}
+        />
       </div>
     );
   }
@@ -272,31 +236,30 @@ const BlockEditorPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div>
-          <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold">Notes</h1>
-                <p className="text-muted-foreground">Organize your thoughts with block-based editing</p>
-              </div>
-              <motion.div whileTap={{ scale: 0.95 }}>
-                <Button
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className="flex items-center gap-2 w-full md:w-auto"
-                >
-                  <Plus size={16} />
-                  <span>New</span>
-                </Button>
-              </motion.div>
+      <div className="bg-card/50 backdrop-blur-sm sticky top-0 z-10 border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 py-4">
+            <div>
+              <h1 className="text-2xl font-bold">Notes</h1>
+              <p className="text-muted-foreground">Organize your thoughts with powerful editing</p>
             </div>
+            <motion.div whileTap={{ scale: 0.95 }}>
+              <Button
+                onClick={() => setIsCreateDialogOpen(true)}
+                className="flex items-center gap-2 w-full md:w-auto"
+              >
+                <Plus size={16} />
+                <span>New</span>
+              </Button>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      <div className="py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Navigation Bar */}
-        <div className="flex flex-col md:flex-row md:items-center">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {/* ... keep existing code (navigation buttons and breadcrumbs) */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -329,7 +292,7 @@ const BlockEditorPage: React.FC = () => {
             </Button>
           </div>
           
-          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm min-w-0 mx-4">
+          <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-muted rounded-md text-sm min-w-0">
             <span className="text-muted-foreground flex-shrink-0">Home</span>
             {breadcrumbs.map((crumb, index) => (
               <div key={crumb.id}>
@@ -366,6 +329,7 @@ const BlockEditorPage: React.FC = () => {
         </div>
 
         {/* Content Area */}
+        {/* ... keep existing code (content rendering) */}
         {filteredItems.length === 0 ? (
           <motion.div 
             className="text-center py-20"
@@ -483,6 +447,13 @@ const BlockEditorPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Sidebar */}
+      <AISidebar
+        isOpen={isAISidebarOpen}
+        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
+        mode="chat"
+      />
     </div>
   );
 };
