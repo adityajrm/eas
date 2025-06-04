@@ -98,7 +98,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     try {
       await addTask({
         title: suggestion.title,
-        description: suggestion.description,
+        notes: suggestion.description, // Use 'notes' instead of 'description'
         priority: suggestion.priority,
         dueDate: suggestion.dueDate ? new Date(suggestion.dueDate) : undefined,
         completed: false
