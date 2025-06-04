@@ -110,7 +110,9 @@ export const AISidebar: React.FC<AISidebarProps> = ({
         if (onInsertContent) {
           onInsertContent(response.text);
           if (!action) {
-            addAssistantMessage(`Content generated and inserted into your notes: "${response.text.substring(0, 100)}${response.text.length > 100 ? '...' : '"}"`);
+            const truncatedText = response.text.substring(0, 100);
+            const displayText = response.text.length > 100 ? `${truncatedText}...` : truncatedText;
+            addAssistantMessage(`Content generated and inserted into your notes: "${displayText}"`);
           }
           toast({
             title: "Content Generated",
