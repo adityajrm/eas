@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
 import { Toaster } from '@/components/ui/toaster';
-import { AppContextProvider } from './context/AppContext';
+import { AppProvider } from './context/AppContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import TasksPage from './components/TasksPage';
-import KnowledgeBasePage from './components/KnowledgeBasePage';
-import CalendarPage from './components/CalendarPage';
-import SettingsPage from './components/SettingsPage';
+import TasksPage from './components/Tasks/TasksPage';
+import KnowledgeBasePage from './components/KnowledgeBase/KnowledgeBasePage';
+import CalendarPage from './components/Calendar/CalendarPage';
+import SettingsPage from './components/Settings/SettingsPage';
 import BlockEditorPage from './components/BlockEditor/BlockEditorPage';
 import { useAppContext } from './context/AppContext';
 import { useIsMobile } from './hooks/use-mobile';
@@ -87,10 +87,10 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AppContextProvider>
+      <AppProvider>
         <AppContent />
         <Toaster />
-      </AppContextProvider>
+      </AppProvider>
     </ThemeProvider>
   );
 }
