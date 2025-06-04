@@ -4,7 +4,6 @@ import { ArrowLeft, Save, FileDown, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { TiptapBlockEditor } from './TiptapBlockEditor';
-import { AISidebar } from '../AISidebar/AISidebar';
 
 interface BlockEditorProps {
   initialContent?: string;
@@ -22,7 +21,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onBack
 }) => {
   const [content, setContent] = useState(initialContent);
-  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
   const [insertContentCallback, setInsertContentCallback] = useState<((content: string) => void) | null>(null);
   const { toast } = useToast();
 
@@ -44,7 +42,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   }, [insertContentCallback]);
 
   const handleExport = () => {
-    // Convert HTML to markdown for export
     const element = document.createElement('a');
     const file = new Blob([content], { type: 'text/html' });
     element.href = URL.createObjectURL(file);
@@ -141,15 +138,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           onInsertContent={handleInsertContent}
         />
       </div>
-
-      {/* AI Sidebar */}
-      <AISidebar
-        isOpen={isAISidebarOpen}
-        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
-        mode="notes"
-        onInsertContent={handleAIInsert}
-        currentContent={content}
-      />
     </div>
   );
 };

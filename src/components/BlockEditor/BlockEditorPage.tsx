@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Home, Grid3X3, List, Search, Plus, FolderPlus, FileText, Folder, MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,7 +11,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { NotionItem, NotionViewMode, NotionBreadcrumb } from '@/types/notion';
 import { getNotionItems, createNotionItem, updateNotionItem, deleteNotionItem, getNotionItemById, searchNotionItems } from '@/services/notionService';
 import { BlockEditor } from './BlockEditor';
-import { AISidebar } from '../AISidebar/AISidebar';
 
 const BlockEditorPage: React.FC = () => {
   const [items, setItems] = useState<NotionItem[]>([]);
@@ -25,7 +25,6 @@ const BlockEditorPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [history, setHistory] = useState<(string | null)[]>([null]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -198,7 +197,6 @@ const BlockEditorPage: React.FC = () => {
   const getContentPreview = (content: string | undefined): string => {
     if (!content) return '';
     
-    // Strip HTML tags for preview
     const plainText = content.replace(/<[^>]*>/g, '').trim();
     return plainText.length > 100 ? plainText.substring(0, 100) + '...' : plainText;
   };
@@ -259,7 +257,6 @@ const BlockEditorPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Navigation Bar */}
         <div className="flex flex-col md:flex-row md:items-center gap-4">
-          {/* ... keep existing code (navigation buttons and breadcrumbs) */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -329,7 +326,6 @@ const BlockEditorPage: React.FC = () => {
         </div>
 
         {/* Content Area */}
-        {/* ... keep existing code (content rendering) */}
         {filteredItems.length === 0 ? (
           <motion.div 
             className="text-center py-20"
@@ -447,13 +443,6 @@ const BlockEditorPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* AI Sidebar */}
-      <AISidebar
-        isOpen={isAISidebarOpen}
-        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
-        mode="chat"
-      />
     </div>
   );
 };

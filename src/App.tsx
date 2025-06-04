@@ -24,22 +24,31 @@ const AppContent: React.FC = () => {
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
 
   const renderContent = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'notes':
-        return <BlockEditorPage />;
-      case 'tasks':
-        return <TasksPage />;
-      case 'knowledge':
-        return <KnowledgeBasePage />;
-      case 'calendar':
-        return <CalendarPage />;
-      case 'settings':
-        return <SettingsPage />;
-      default:
-        return <Dashboard />;
-    }
+    const baseClasses = "flex-1 overflow-auto";
+    const contentClasses = currentView === 'notes' 
+      ? baseClasses // Notes page handles its own padding
+      : `${baseClasses} p-6`; // Other pages get standard padding
+
+    const content = (() => {
+      switch (currentView) {
+        case 'dashboard':
+          return <Dashboard />;
+        case 'notes':
+          return <BlockEditorPage />;
+        case 'tasks':
+          return <TasksPage />;
+        case 'knowledge':
+          return <KnowledgeBasePage />;
+        case 'calendar':
+          return <CalendarPage />;
+        case 'settings':
+          return <SettingsPage />;
+        default:
+          return <Dashboard />;
+      }
+    })();
+
+    return <main className={contentClasses}>{content}</main>;
   };
 
   return (
@@ -68,18 +77,15 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {renderContent()}
-      </main>
+      {renderContent()}
 
-      {/* AI Sidebar for non-notes pages */}
-      {currentView !== 'notes' && (
-        <AISidebar
-          isOpen={isAISidebarOpen}
-          onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
-          mode="chat"
-        />
-      )}
+      {/* AI Sidebar - part of main layout, not overlay */}
+      <AISidebar
+        isOpen={isAISidebarOpen}
+        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
+        mode={currentView === 'notes' ? 'notes' : 'chat'}
+        currentView={currentView}
+      />
     </div>
   );
 };
