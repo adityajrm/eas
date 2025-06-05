@@ -102,7 +102,7 @@ const CalendarPage = () => {
   const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, event) => {
     const startDate = parseDate(event.start);
     if (!startDate) return acc; // Skip invalid events
-  
+
     const date = format(startDate, 'yyyy-MM-dd');
     if (!acc[date]) {
       acc[date] = [];
@@ -110,7 +110,7 @@ const CalendarPage = () => {
     acc[date].push({
       ...event,
       start: startDate,
-      end: parseDate(event.end) || startDate, // Fallback to start date if end is invalid
+      end: parseDate(event.end) || startDate // Fallback to start date if end is invalid
     });
     return acc;
   }, {});
@@ -120,7 +120,7 @@ const CalendarPage = () => {
           <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
           <p className="text-muted-foreground">Manage your schedule and events</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={() => setIsDialogOpen(true)} className="bg-slate-50">
           <Plus className="mr-2 h-4 w-4" /> Add Event
         </Button>
       </div>
@@ -145,12 +145,9 @@ const CalendarPage = () => {
                 </h3>
                 <div className="space-y-4">
                   {selectedDate && events.filter(event => {
-                    const eventStart = parseDate(event.start);
-                    return (
-                      eventStart &&
-                      format(eventStart, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
-                    );
-                  }).map(event => <Card key={event.id} className="cursor-pointer" onClick={() => handleEventClick(event)}>
+                const eventStart = parseDate(event.start);
+                return eventStart && format(eventStart, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
+              }).map(event => <Card key={event.id} className="cursor-pointer" onClick={() => handleEventClick(event)}>
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
