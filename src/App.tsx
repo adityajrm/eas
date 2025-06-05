@@ -26,13 +26,25 @@ const AppContent: React.FC = () => {
   const [selectedText, setSelectedText] = useState('');
   const [currentContent, setCurrentContent] = useState('');
 
-  // Handle text selection for notes mode
+  // Handle text selection for notes mode - only within notes editor
   useEffect(() => {
     const handleSelection = () => {
       if (currentView === 'notes') {
         const selection = window.getSelection();
         if (selection && selection.toString().trim()) {
-          setSelectedText(selection.toString().trim());
+          // Check if the selection is within the notes editor
+          const range = selection.getRangeAt(0);
+          const container = range.commonAncestorContainer;
+          const editorElement = document.querySelector('[data-tiptap-editor]') || 
+                               document.querySelector('.ProseMirror') ||
+                               document.querySelector('[contenteditable="true"]');
+          
+          if (editorElement && (editorElement.contains(container) || container === editorElement)) {
+            setSelectedText(selection.toString().trim());
+          }
+        } else {
+          // Clear selected text when nothing is selected
+          setSelectedText('');
         }
       }
     };
@@ -49,8 +61,8 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     const baseClasses = "flex-1 overflow-auto transition-all duration-300 ease-in-out";
     const contentClasses = currentView === 'notes' 
-      ? `${baseClasses} ${isAISidebarOpen ? 'mr-0' : 'mr-0'}` // Notes page handles its own padding
-      : `${baseClasses} p-6 ${isAISidebarOpen ? 'mr-0' : 'mr-0'}`; // Other pages get standard padding
+      ? `${baseClasses}` // Notes page handles its own padding
+      : `${baseClasses} p-6`; // Other pages get standard padding
 
     const content = (() => {
       switch (currentView) {
@@ -111,32 +123,27 @@ const AppContent: React.FC = () => {
       {/* Main Content Container */}
       <div className={cn(
         "flex flex-1 transition-all duration-300 ease-in-out",
-        isAISidebarOpen ? "mr-80" : "mr-0"
+        isAISidebarOpen ? "pr-80" : "pr-0"
       )}>
         {renderContent()}
       </div>
 
       {/* AI Sidebar */}
-      <div className={cn(
-        "transition-all duration-300 ease-in-out",
-        isAISidebarOpen ? "w-80" : "w-0"
-      )}>
-        <AISidebar
-          isOpen={isAISidebarOpen}
-          onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
-          mode={currentView === 'notes' ? 'notes' : 'chat'}
-          currentView={currentView}
-          currentContent={currentContent}
-          selectedText={selectedText}
-          onInsertContent={(content) => {
-            // This will be passed down to the editor
-            if (currentView === 'notes') {
-              const event = new CustomEvent('insertAIContent', { detail: content });
-              window.dispatchEvent(event);
-            }
-          }}
-        />
-      </div>
+      <AISidebar
+        isOpen={isAISidebarOpen}
+        onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
+        mode={currentView === 'notes' ? 'notes' : 'chat'}
+        currentView={currentView}
+        currentContent={currentContent}
+        selectedText={selectedText}
+        onInsertContent={(content) => {
+          // This will be passed down to the editor
+          if (currentView === 'notes') {
+            const event = new CustomEvent('insertAIContent', { detail: content });
+            window.dispatchEvent(event);
+          }
+        }}
+      />
     </div>
   );
 };

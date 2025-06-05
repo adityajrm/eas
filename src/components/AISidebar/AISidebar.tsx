@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, MessageCircle, Wand2, FileText, CheckSquare, ChevronLeft, ChevronRight, Send, Plus } from 'lucide-react';
+import { X, MessageCircle, Wand2, FileText, CheckSquare, ChevronLeft, ChevronRight, Send, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -49,8 +49,9 @@ export const AISidebar: React.FC<AISidebarProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<{ role: string; content: string; timestamp?: string }[]>([]);
+  const [contextText, setContextText] = useState('');
   const { toast } = useToast();
-  const { addTask } = useAppContext();
+  const { addTask, tasks } = useAppContext();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -64,10 +65,10 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     }
   }, [chatHistory]);
 
-  // Update context when selected text changes
+  // Update context when selected text changes (only for notes mode)
   useEffect(() => {
     if (selectedText && mode === 'notes') {
-      setPrompt(prev => prev || `Selected text: "${selectedText}"`);
+      setContextText(selectedText);
     }
   }, [selectedText, mode]);
 
@@ -83,15 +84,30 @@ export const AISidebar: React.FC<AISidebarProps> = ({
   };
 
   const addAssistantMessage = (content: string, hasAddButton: boolean = false) => {
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: 'assistant',
-      content,
-      timestamp: new Date(),
-      hasAddButton
-    };
-    setChatHistory(prev => [...prev, assistantMessage]);
-    return assistantMessage;
+    // Filter out command tokens from display
+    const cleanContent = content.replace(/createTask\[.*?\](?::.*)?/g, '')
+                               .replace(/updateTask\[.*?\](?::.*)?/g, '')
+                               .replace(/deleteTask\[.*?\]/g, '')
+                               .replace(/createNote\[.*?\](?::.*)?/g, '')
+                               .replace(/updateNote\[.*?\](?::.*)?/g, '')
+                               .replace(/deleteNote\[.*?\]/g, '')
+                               .replace(/createEvent\[.*?\](?::.*)?/g, '')
+                               .replace(/updateEvent\[.*?\](?::.*)?/g, '')
+                               .replace(/deleteEvent\[.*?\]/g, '')
+                               .replace(/KB\{.*?\}/g, '')
+                               .trim();
+    
+    if (cleanContent) {
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: cleanContent,
+        timestamp: new Date(),
+        hasAddButton
+      };
+      setChatHistory(prev => [...prev, assistantMessage]);
+      return assistantMessage;
+    }
   };
 
   const createTaskFromSuggestion = async (suggestion: TaskSuggestion) => {
@@ -148,22 +164,29 @@ export const AISidebar: React.FC<AISidebarProps> = ({
       let response;
       
       if (mode === 'notes') {
-        const context = selectedText || currentContent;
+        const context = contextText || currentContent;
         response = await callAINoteAPI(prompt, context);
         
         // Add assistant message with add button for notes mode
         addAssistantMessage(response.text, true);
       } else {
         // Chat mode - check for task-related keywords
-        const isTaskRequest = /create|task|todo|remind|schedule|plan/i.test(prompt);
+        const isTaskRequest = /create|task|todo|remind|schedule|plan|update|modify|delete|complete/i.test(prompt);
         
         const newConversationHistory = [
           ...conversationHistory,
           { role: 'user', content: prompt, timestamp: new Date().toISOString() }
         ];
 
+        // Add task context if in tasks view
+        let contextualPrompt = prompt;
+        if (currentView === 'tasks') {
+          const taskContext = `Current tasks: ${JSON.stringify(tasks.map(t => ({ id: t.id, title: t.title, priority: t.priority, completed: t.completed, notes: t.notes })))}`;
+          contextualPrompt = `${taskContext}\n\nUser request: ${prompt}`;
+        }
+
         if (isTaskRequest) {
-          const taskPrompt = `Based on the user's request: "${prompt}", suggest 2-3 specific, actionable tasks. Format each task as a numbered list with clear, concise titles.`;
+          const taskPrompt = `Based on the user's request: "${contextualPrompt}", suggest 2-3 specific, actionable tasks. Format each task as a numbered list with clear, concise titles.`;
           response = await callGeminiAPI(taskPrompt, newConversationHistory);
           
           // Parse task suggestions and add them as interactive elements
@@ -183,7 +206,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
             });
           }
         } else {
-          response = await callGeminiAPI(prompt, newConversationHistory);
+          response = await callGeminiAPI(contextualPrompt, newConversationHistory);
           addAssistantMessage(response.text);
         }
         
@@ -225,6 +248,20 @@ export const AISidebar: React.FC<AISidebarProps> = ({
     }
   };
 
+  const clearContext = () => {
+    setContextText('');
+  };
+
+  const startNewChat = () => {
+    setChatHistory([]);
+    setConversationHistory([]);
+    setPrompt('');
+    toast({
+      title: "New Chat Started",
+      description: "Previous conversation has been cleared",
+    });
+  };
+
   if (!isOpen) {
     return (
       <div className="fixed right-0 top-1/2 -translate-y-1/2 z-50">
@@ -241,7 +278,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({
   }
 
   return (
-    <div className="w-80 bg-background border-l shadow-lg flex flex-col h-full transition-all duration-300 ease-in-out">
+    <div className="fixed right-0 top-0 w-80 h-full bg-background border-l shadow-lg flex flex-col transition-all duration-300 ease-in-out z-40">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
@@ -250,20 +287,75 @@ export const AISidebar: React.FC<AISidebarProps> = ({
             {mode === 'notes' ? 'Notes AI' : 'AI Assistant'}
           </h2>
         </div>
-        <Button variant="ghost" size="sm" onClick={onToggle}>
-          <ChevronRight size={16} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={startNewChat}>
+            <Plus size={16} />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onToggle}>
+            <ChevronRight size={16} />
+          </Button>
+        </div>
       </div>
 
       {/* Instructions */}
       <div className="p-4 border-b bg-muted/20">
         <p className="text-sm text-muted-foreground">
           {mode === 'notes' 
-            ? 'Select text in your editor to analyze it, ask questions about your content, or request help with writing and editing.'
-            : 'Chat with me to get help, create tasks, manage your workspace, or ask questions about anything.'
+            ? 'Select text in your notes editor to analyze it, ask questions about your content, or request help with writing and editing. You can also get suggestions for improving your notes.'
+            : currentView === 'tasks'
+            ? 'I can help you manage your tasks - create new ones, update existing tasks, mark them as complete, or analyze your task list. Just describe what you need and I\'ll assist you.'
+            : 'Chat with me to get help, create tasks, manage your workspace, or ask questions about anything. I can assist you with various activities and provide helpful information.'
           }
         </p>
       </div>
+
+      {/* Context Display for Notes */}
+      {contextText && mode === 'notes' && (
+        <div className="p-4 border-b bg-muted/20">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs text-muted-foreground font-medium">Selected Text:</p>
+            <Button variant="ghost" size="sm" onClick={clearContext} className="h-6 w-6 p-0">
+              <Trash2 size={12} />
+            </Button>
+          </div>
+          <ScrollArea className="h-20 bg-background p-2 rounded border">
+            <p className="text-sm">{contextText}</p>
+          </ScrollArea>
+        </div>
+      )}
+
+      {/* Task Context for Tasks View */}
+      {currentView === 'tasks' && (
+        <div className="p-4 border-b bg-muted/20">
+          <p className="text-xs text-muted-foreground font-medium mb-2">Current Tasks:</p>
+          <ScrollArea className="h-32 bg-background p-2 rounded border">
+            <div className="space-y-2">
+              {tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tasks available</p>
+              ) : (
+                tasks.slice(0, 5).map((task) => (
+                  <div key={task.id} className="text-sm">
+                    <span className={cn("font-medium", task.completed && "line-through")}>
+                      {task.title}
+                    </span>
+                    <span className={cn(
+                      "ml-2 text-xs px-1 rounded",
+                      task.priority === 'high' && "bg-red-100 text-red-700",
+                      task.priority === 'medium' && "bg-yellow-100 text-yellow-700",
+                      task.priority === 'low' && "bg-green-100 text-green-700"
+                    )}>
+                      {task.priority}
+                    </span>
+                  </div>
+                ))
+              )}
+              {tasks.length > 5 && (
+                <p className="text-xs text-muted-foreground">+ {tasks.length - 5} more tasks</p>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
 
       {/* Content */}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
@@ -348,14 +440,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({
           )}
         </div>
       </ScrollArea>
-
-      {/* Context Display for Notes */}
-      {selectedText && mode === 'notes' && (
-        <div className="p-4 border-t bg-muted/20">
-          <p className="text-xs text-muted-foreground mb-1">Selected Text:</p>
-          <p className="text-sm bg-background p-2 rounded border">{selectedText}</p>
-        </div>
-      )}
 
       {/* Input Area */}
       <div className="p-4 border-t space-y-2">
