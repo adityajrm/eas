@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Button } from '@/components/ui/button';
@@ -8,71 +7,67 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Search, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 const KnowledgeBasePage = () => {
-  const { knowledgeItems, addKnowledgeItem, deleteKnowledgeItem } = useAppContext();
+  const {
+    knowledgeItems,
+    addKnowledgeItem,
+    deleteKnowledgeItem
+  } = useAppContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newItem, setNewItem] = useState({ 
-    title: '', 
-    content: '', 
+  const [newItem, setNewItem] = useState({
+    title: '',
+    content: '',
     category: 'General',
-    tags: [] 
+    tags: []
   });
   const [currentTag, setCurrentTag] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
 
   // Available categories
   const categories = ['General', 'Work', 'Personal', 'Research', 'Projects'];
-  
+
   // Extract all unique categories from existing items
   const existingCategories = [...new Set(knowledgeItems.map(item => item.category))];
   const allCategories = [...new Set([...categories, ...existingCategories])];
-
-  const filteredItems = knowledgeItems.filter(
-    (item) =>
-      (item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))) &&
-      (!filterCategory || item.category === filterCategory)
-  );
-
+  const filteredItems = knowledgeItems.filter(item => (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || item.content.toLowerCase().includes(searchQuery.toLowerCase()) || item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))) && (!filterCategory || item.category === filterCategory));
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && currentTag.trim()) {
       if (!newItem.tags.includes(currentTag.trim())) {
         setNewItem({
           ...newItem,
-          tags: [...newItem.tags, currentTag.trim()],
+          tags: [...newItem.tags, currentTag.trim()]
         });
       }
       setCurrentTag('');
       e.preventDefault();
     }
   };
-
   const handleRemoveTag = (tagToRemove: string) => {
     setNewItem({
       ...newItem,
-      tags: newItem.tags.filter((tag) => tag !== tagToRemove),
+      tags: newItem.tags.filter(tag => tag !== tagToRemove)
     });
   };
-
   const handleSubmit = () => {
     if (newItem.title.trim() && newItem.content.trim()) {
       addKnowledgeItem(newItem);
-      setNewItem({ title: '', content: '', category: 'General', tags: [] });
+      setNewItem({
+        title: '',
+        content: '',
+        category: 'General',
+        tags: []
+      });
       setIsDialogOpen(false);
     }
   };
-
-  return (
-    <div className="space-y-6 animate-fade-in">
+  return <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Knowledge Base</h1>
           <p className="text-muted-foreground">Store and retrieve important information</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2">
+        <Button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-2 bg-slate-50">
           <Plus size={16} />
           <span>Add New Entry</span>
         </Button>
@@ -81,48 +76,32 @@ const KnowledgeBasePage = () => {
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-          <Input
-            className="pl-10"
-            placeholder="Search knowledge base..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <Input className="pl-10" placeholder="Search knowledge base..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
         </div>
-        <Select
-          value={filterCategory}
-          onValueChange={setFilterCategory}
-        >
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="md:w-[180px]">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {allCategories.map((category) => (
-              <SelectItem key={category} value={category}>
+            {allCategories.map(category => <SelectItem key={category} value={category}>
                 {category}
-              </SelectItem>
-            ))}
+              </SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
-      {filteredItems.length === 0 ? (
-        <div className="text-center py-16">
+      {filteredItems.length === 0 ? <div className="text-center py-16">
           <h3 className="text-lg font-medium">No knowledge items found</h3>
           <p className="text-muted-foreground mb-4">
             {searchQuery || filterCategory ? 'Try different search criteria' : 'Add your first entry to get started'}
           </p>
-          {!searchQuery && !filterCategory && (
-            <Button onClick={() => setIsDialogOpen(true)}>
+          {!searchQuery && !filterCategory && <Button onClick={() => setIsDialogOpen(true)}>
               <Plus size={16} className="mr-2" />
               Add Knowledge Entry
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.map((item) => (
-            <Card key={item.id} className="knowledge-card">
+            </Button>}
+        </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredItems.map(item => <Card key={item.id} className="knowledge-card">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div>
@@ -131,12 +110,7 @@ const KnowledgeBasePage = () => {
                       {item.category}
                     </span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={() => deleteKnowledgeItem(item.id)}
-                  >
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => deleteKnowledgeItem(item.id)}>
                     <X size={16} />
                   </Button>
                 </div>
@@ -146,23 +120,16 @@ const KnowledgeBasePage = () => {
                   {item.content.length > 150 ? `${item.content.substring(0, 150)}...` : item.content}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {item.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs px-2 py-0.5 rounded-full bg-assistant-accent text-assistant-primary"
-                    >
+                  {item.tags.map(tag => <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-assistant-accent text-assistant-primary">
                       {tag}
-                    </span>
-                  ))}
+                    </span>)}
                 </div>
                 <div className="text-xs text-muted-foreground pt-2">
                   {new Date(item.updatedAt).toLocaleDateString()}
                 </div>
               </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+            </Card>)}
+        </div>}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -174,30 +141,26 @@ const KnowledgeBasePage = () => {
               <label htmlFor="title" className="text-sm font-medium">
                 Title
               </label>
-              <Input
-                id="title"
-                placeholder="Entry title"
-                value={newItem.title}
-                onChange={(e) => setNewItem({ ...newItem, title: e.target.value })}
-              />
+              <Input id="title" placeholder="Entry title" value={newItem.title} onChange={e => setNewItem({
+              ...newItem,
+              title: e.target.value
+            })} />
             </div>
             <div className="space-y-2">
               <label htmlFor="category" className="text-sm font-medium">
                 Category
               </label>
-              <Select
-                value={newItem.category}
-                onValueChange={(value) => setNewItem({ ...newItem, category: value })}
-              >
+              <Select value={newItem.category} onValueChange={value => setNewItem({
+              ...newItem,
+              category: value
+            })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
+                  {categories.map(category => <SelectItem key={category} value={category}>
                       {category}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -205,43 +168,24 @@ const KnowledgeBasePage = () => {
               <label htmlFor="content" className="text-sm font-medium">
                 Content
               </label>
-              <Textarea
-                id="content"
-                placeholder="Write your content here..."
-                rows={6}
-                value={newItem.content}
-                onChange={(e) => setNewItem({ ...newItem, content: e.target.value })}
-              />
+              <Textarea id="content" placeholder="Write your content here..." rows={6} value={newItem.content} onChange={e => setNewItem({
+              ...newItem,
+              content: e.target.value
+            })} />
             </div>
             <div className="space-y-2">
               <label htmlFor="tags" className="text-sm font-medium">
                 Tags (press Enter to add)
               </label>
-              <Input
-                id="tags"
-                placeholder="Add tags..."
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                onKeyDown={handleAddTag}
-              />
-              {newItem.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {newItem.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="flex items-center text-xs px-2 py-1 rounded-full bg-assistant-accent text-assistant-primary"
-                    >
+              <Input id="tags" placeholder="Add tags..." value={currentTag} onChange={e => setCurrentTag(e.target.value)} onKeyDown={handleAddTag} />
+              {newItem.tags.length > 0 && <div className="flex flex-wrap gap-1 mt-2">
+                  {newItem.tags.map(tag => <span key={tag} className="flex items-center text-xs px-2 py-1 rounded-full bg-assistant-accent text-assistant-primary">
                       {tag}
-                      <button
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-1 p-0.5 rounded-full hover:bg-assistant-primary hover:text-white"
-                      >
+                      <button onClick={() => handleRemoveTag(tag)} className="ml-1 p-0.5 rounded-full hover:bg-assistant-primary hover:text-white">
                         <X size={12} />
                       </button>
-                    </span>
-                  ))}
-                </div>
-              )}
+                    </span>)}
+                </div>}
             </div>
           </div>
           <DialogFooter>
@@ -252,8 +196,6 @@ const KnowledgeBasePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 };
-
 export default KnowledgeBasePage;
