@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       onCloseMobile();
     }
   };
-  return <div className="w-64 bg-sidebar h-screen p-4 flex flex-col relative">
+  return <div className="w-64 bg-sidebar h-screen p-4 flex flex-col relative rounded-none border border-gray-200\n">
       {isMobile && <Button variant="ghost" size="icon" onClick={onCloseMobile} className="absolute top-2 right-2 text-sidebar-foreground/70" aria-label="Close sidebar">
           <X size={18} />
         </Button>}
