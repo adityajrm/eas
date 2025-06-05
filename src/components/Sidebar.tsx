@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span>Settings</span>
           </button>
           
-          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="transition-all duration-200 mr-1 bg-inherit text-slate-950">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="transition-all duration-200 mr-1 bg-inherit text-gray-50">
             {theme === 'light' ? <Moon size={18} className="transition-transform duration-300 rotate-0" /> : <Sun size={18} className="transition-transform duration-300 rotate-90" />}
           </Button>
         </div>
