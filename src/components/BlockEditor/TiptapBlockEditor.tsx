@@ -51,10 +51,10 @@ export const TiptapBlockEditor: React.FC<TiptapBlockEditorProps> = ({
     editorProps: {
       attributes: {
         class: 'prose prose-lg max-w-none focus:outline-none min-h-[500px] p-6',
+        'data-tiptap-editor': 'true',
       },
     },
     onUpdate: ({ editor }) => {
-      // Debounced save
       const content = editor.getHTML();
       setIsSaving(true);
       
@@ -88,15 +88,24 @@ export const TiptapBlockEditor: React.FC<TiptapBlockEditorProps> = ({
   };
 
   const toggleFormat = (name: string, attrs?: any) => {
-    if (attrs) {
-      editor.chain().focus().toggleNode(name, attrs).run();
+    if (name === 'heading') {
+      editor.chain().focus().toggleHeading(attrs).run();
+    } else if (name === 'bulletList') {
+      editor.chain().focus().toggleBulletList().run();
+    } else if (name === 'orderedList') {
+      editor.chain().focus().toggleOrderedList().run();
+    } else if (name === 'taskList') {
+      editor.chain().focus().toggleTaskList().run();
+    } else if (name === 'blockquote') {
+      editor.chain().focus().toggleBlockquote().run();
     } else {
+      // For marks like bold, italic, etc.
       editor.chain().focus().toggleMark(name).run();
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       {/* Title */}
       <div className="mb-6">
         <Input
@@ -189,7 +198,7 @@ export const TiptapBlockEditor: React.FC<TiptapBlockEditorProps> = ({
             size="sm"
             onClick={() => toggleFormat('taskList')}
           >
-            <input type="checkbox" className="pointer-events-none" />
+            <CheckSquare size={16} />
           </Button>
         </div>
 

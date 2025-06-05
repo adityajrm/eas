@@ -90,7 +90,7 @@ const AppContent: React.FC = () => {
       }
     })();
 
-    return <main className={contentClasses}>{content}</main>;
+    return <main className={cn(contentClasses, "animate-fade-in")}>{content}</main>;
   };
 
   return (
@@ -121,10 +121,7 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Main Content Container */}
-      <div className={cn(
-        "flex flex-1 transition-all duration-300 ease-in-out",
-        isAISidebarOpen ? "pr-80" : "pr-0"
-      )}>
+      <div className="flex flex-1 transition-all duration-300 ease-in-out">
         {renderContent()}
       </div>
 
@@ -153,7 +150,6 @@ function App() {
     <ThemeProvider>
       <AppProvider>
         <AppContent />
-        <Toaster />
       </AppProvider>
     </ThemeProvider>
   );

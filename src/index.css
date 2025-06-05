@@ -1,102 +1,65 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
+    --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
-
-    --secondary: 217.2 91.2% 59.8%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 221.2 83.2% 53.3%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
-
+    --radius: 0.75rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
     --assistant-primary: 221.2 83.2% 53.3%;
-    --assistant-accent: 210 40% 96.1%;
-    --assistant-muted: 210 40% 93%;
-    
-    --code-bg: 220 13% 91%;
-    --code-header-bg: 220 14% 96%;
-    --code-text: 220 25% 10%;
   }
 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
-
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    --assistant-primary: 224.3 76.3% 48%;
-    --assistant-accent: 217.2 32.6% 17.5%;
-    --assistant-muted: 217.2 32.6% 20%;
-    
-    --code-bg: 220 13% 18%;
-    --code-header-bg: 220 14% 13%;
-    --code-text: 220 25% 90%;
+    --ring: 224.3 76.3% 94.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --assistant-primary: 217.2 91.2% 59.8%;
   }
 }
 
@@ -104,101 +67,90 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
-.card-hover {
-  @apply transition-all duration-200 hover:shadow-md hover:-translate-y-1;
+@layer components {
+  .glow-background {
+    @apply fixed inset-0 -z-10;
+    background: radial-gradient(circle at 50% 50%, 
+      hsl(var(--primary) / 0.08) 0%, 
+      transparent 50%),
+      radial-gradient(circle at 80% 20%, 
+        hsl(var(--secondary) / 0.05) 0%, 
+        transparent 50%),
+      radial-gradient(circle at 20% 80%, 
+        hsl(var(--accent) / 0.05) 0%, 
+        transparent 50%);
+  }
 }
 
-.task-item {
-  @apply flex items-center gap-2 p-3 rounded-md hover:bg-muted transition-colors;
+@layer utilities {
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slide-in-right {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+  }
+  
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
 }
 
-.note-card {
-  @apply p-4 rounded-lg border bg-card shadow-sm card-hover;
-}
-
-.knowledge-card {
-  @apply p-4 rounded-lg border bg-card shadow-sm card-hover;
-}
-
-/* Toast positioning at top-right corner */
-:root {
-  --toast-position-y: top;
-  --toast-position-x: right;
-}
-
-/* Chat user message styling */
-.user-message-bubble {
-  @apply bg-assistant-primary text-white;
-}
-
-/* Code block styling */
-.code-block {
-  @apply my-4 rounded-md overflow-hidden border shadow-sm;
-  background-color: hsl(var(--code-bg));
-  color: hsl(var(--code-text));
-}
-
-.code-header {
-  @apply flex justify-between items-center px-4 py-2 text-sm;
-  background-color: hsl(var(--code-header-bg));
-}
-
-.language {
-  @apply font-mono;
-}
-
-.copy-button {
-  @apply p-1 rounded hover:bg-background/30 transition-colors;
-}
-
-.code-block pre {
-  @apply p-4 overflow-x-auto font-mono text-sm;
-}
-
-.table-container {
-  @apply my-4 overflow-x-auto;
-}
-
-.table-container table {
-  @apply w-full border-collapse;
-}
-
-.table-container th {
-  @apply bg-muted p-2 text-left font-medium text-muted-foreground;
-}
-
-.table-container td {
-  @apply border-t p-2;
-}
-
-.table-container tr {
-  @apply border-b last:border-b-0;
-}
-
-/* Make the note styling match the knowledge base theme */
+/* Markdown styles for better rendering */
 .prose {
-  @apply text-foreground;
+  @apply max-w-none;
+}
+
+.prose h1 {
+  @apply text-2xl font-bold mb-4;
+}
+
+.prose h2 {
+  @apply text-xl font-bold mb-3;
+}
+
+.prose h3 {
+  @apply text-lg font-bold mb-2;
 }
 
 .prose strong {
-  @apply font-bold text-foreground;
+  @apply font-bold;
 }
 
-.prose h1, .prose h2, .prose h3 {
-  @apply text-foreground font-bold;
+.prose em {
+  @apply italic;
 }
 
 .prose code {
-  @apply bg-muted px-1 py-0.5 rounded font-mono text-sm;
+  @apply bg-muted px-1 py-0.5 rounded text-sm font-mono;
 }
 
-.prose a {
-  @apply text-primary underline;
+.prose del {
+  @apply line-through;
+}
+
+.prose li {
+  @apply mb-1;
 }

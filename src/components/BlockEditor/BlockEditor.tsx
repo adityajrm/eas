@@ -1,7 +1,7 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { ArrowLeft, Save, FileDown, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { TiptapBlockEditor } from './TiptapBlockEditor';
 
 interface BlockEditorProps {
@@ -21,7 +21,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 }) => {
   const [content, setContent] = useState(initialContent);
   const [insertContentCallback, setInsertContentCallback] = useState<((content: string) => void) | null>(null);
-  const { toast } = useToast();
 
   // Listen for AI content insertion
   useEffect(() => {
@@ -47,12 +46,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const handleInsertContent = useCallback((callback: (content: string) => void) => {
     setInsertContentCallback(() => callback);
   }, []);
-
-  const handleAIInsert = useCallback((aiContent: string) => {
-    if (insertContentCallback) {
-      insertContentCallback(aiContent);
-    }
-  }, [insertContentCallback]);
 
   const handleExport = () => {
     const element = document.createElement('a');
@@ -80,7 +73,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-fade-in">
       {/* Header */}
       <div className="bg-card/50 backdrop-blur-sm sticky top-0 z-20 border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1,3 +1,4 @@
+
 import { getAiConfig } from '../config/aiConfig';
 
 /**
@@ -14,6 +15,16 @@ export const callAINoteAPI = async (prompt: string, context: string = ''): Promi
   }
 
   try {
+    // Determine if this is a content generation request
+    const isContentRequest = /write|create|generate|draft|compose|make|build|develop|produce/i.test(prompt);
+    
+    let systemPrompt;
+    if (isContentRequest) {
+      systemPrompt = `You are a professional content writer. Generate only the requested content without any conversational phrases like "Here is", "Sure", "I'll help you", etc. Provide direct, clean content that can be immediately used. Context: "${context}". Task: "${prompt}".`;
+    } else {
+      systemPrompt = `You are an expert document editor and writing assistant. Provide helpful advice and suggestions. When the user asks for content generation, provide only the content without conversational phrases. Context: "${context}". User request: "${prompt}".`;
+    }
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.model}:generateContent?key=${config.apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -22,7 +33,7 @@ export const callAINoteAPI = async (prompt: string, context: string = ''): Promi
           { 
             role: "user", 
             parts: [{ 
-              text: `You are an expert document editor. Perform the following task: "${prompt}". Context: "${context}".` 
+              text: systemPrompt 
             }] 
           }
         ],
